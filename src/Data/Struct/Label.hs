@@ -12,4 +12,3 @@ module Data.Struct.Label
   ) where
 
 import Data.Struct.Label.Internal
-

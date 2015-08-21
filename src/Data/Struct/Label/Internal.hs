@@ -26,19 +26,19 @@ type Key = Word8 -- small universe for testing
 midBound :: Key
 midBound = unsafeShiftR maxBound 1
 
-class Struct t => Intrusive t
+class Struct t => IsLabel t
 
-next :: Intrusive t => Slot t t
+key :: IsLabel t => Field t Key
+key = field 0
+{-# INLINE key #-}
+
+next :: IsLabel t => Slot t t
 next = slot 1
 {-# INLINE next #-}
 
-prev :: Intrusive t => Slot t t
+prev :: IsLabel t => Slot t t
 prev = slot 2
 {-# INLINE prev #-}
-
-key :: Intrusive t => Field t Key
-key = field 0
-{-# INLINE key #-}
 
 -- | Logarithmic time list labeling solution 
 newtype Label s = Label (Object s)
@@ -48,7 +48,7 @@ instance Eq (Label s) where (==) = eqStruct
 instance Struct Label where
   struct _ = Dict
 
-instance Intrusive Label
+instance IsLabel Label
 
 -- | Construct an explicit upper structure.
 --
@@ -123,7 +123,7 @@ insertAfterLabel this = st $ do
 
   balance :: Label s -> Key -> Key -> Key -> ST s ()
   balance !_ !_ !_ 0 = return ()
-  balance Nil _ _ _ = return ()
+  balance Nil _ _ _ = error "balanced past the end" -- return ()
   balance c v dv j = do
     let !v' = v + dv
     setField key c v'

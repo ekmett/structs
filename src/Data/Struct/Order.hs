@@ -31,7 +31,7 @@ instance Eq (Order s) where (==) = eqStruct
 instance Struct Order where
   struct _ = Dict
 
-instance Intrusive Order
+instance IsLabel Order
 
 makeOrder :: PrimMonad m => Label (PrimState m) -> Key -> Order (PrimState m) -> Order (PrimState m) -> m (Order (PrimState m))
 makeOrder p a l r = st $ do
