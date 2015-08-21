@@ -49,6 +49,7 @@ library
 
   exposed-modules:
     Data.Struct
+    Data.Struct.Internal
     Data.Struct.Label
     Data.Struct.Label.Internal
     Data.Struct.Order

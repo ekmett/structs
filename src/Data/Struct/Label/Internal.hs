@@ -18,7 +18,7 @@ import Control.Monad
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Bits
-import Data.Struct
+import Data.Struct.Internal
 import Data.Word
 
 --------------------------------------------------------------------------------

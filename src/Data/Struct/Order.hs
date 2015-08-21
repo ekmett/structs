@@ -18,7 +18,7 @@ module Data.Struct.Order
   ) where
 
 import Control.Monad.Primitive
-import Data.Struct
+import Data.Struct.Internal
 import Data.Struct.Label.Internal
 
 --------------------------------------------------------------------------------
