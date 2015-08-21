@@ -97,7 +97,7 @@ readMutableByteArraySmallArray# m i s = unsafeCoerce# readSmallArray# m i s
 -- * Field Accessors
 --------------------------------------------------------------------------------
 
-data Slot x y = Slot 
+data Slot x y = Slot
   (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, SmallMutableArray# s Any #))
   (forall s. SmallMutableArray# s Any -> SmallMutableArray# s Any -> State# s -> State# s)
 
@@ -109,9 +109,10 @@ instance Precomposable Slot where
     (\x s -> case gxy x s of (# s', y #) -> gyz y s')
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 
-slot :: Int# -> Slot s t
-slot i = Slot (\m s -> readSmallMutableArraySmallArray# m i s)
-              (\m a s -> writeSmallMutableArraySmallArray# m i a s)
+slot :: Int -> Slot s t
+slot (I# i) = Slot
+  (\m s -> readSmallMutableArraySmallArray# m i s)
+  (\m a s -> writeSmallMutableArraySmallArray# m i a s)
 
 get :: (PrimMonad m, Struct x, Struct y) => Slot x y -> x (PrimState m) -> m (y (PrimState m))
 get (Slot go _) x = primitive $ \s -> case go (destruct x) s of
@@ -131,14 +132,14 @@ instance Precomposable Field where
     (\x s -> case gxy x s of (# s', y #) -> gyz y s')
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 
-field :: Int# -> Field s a
-field i = Field
+field :: Int -> Field s a
+field (I# i) = Field
   (\m s -> unsafeCoerce# readSmallArray# m i s)
   (\m a s -> unsafeCoerce# writeSmallArray# m i a s)
 {-# INLINE field #-}
 
-unboxedField :: Prim a => Int# -> Int# -> Field s a
-unboxedField i j = Field 
+unboxedField :: Prim a => Int -> Int -> Field s a
+unboxedField (I# i) (I# j) = Field
   (\m s -> case readMutableByteArraySmallArray# m i s of
      (# s', mba #) -> readByteArray# mba j s')
   (\m a s -> case readMutableByteArraySmallArray# m i s of

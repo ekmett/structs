@@ -34,15 +34,15 @@ midBound = unsafeShiftR maxBound 1
 class Struct t => Intrusive t
 
 next :: Intrusive t => Slot t t
-next = slot 1#
+next = slot 1
 {-# INLINE next #-}
 
 prev :: Intrusive t => Slot t t
-prev = slot 2#
+prev = slot 2
 {-# INLINE prev #-}
 
 key :: Intrusive t => Field t Key
-key = field 0# -- TODO: unboxedField 0# 0#
+key = field 0
 {-# INLINE key #-}
 
 -- | Logarithmic time list labeling solution 

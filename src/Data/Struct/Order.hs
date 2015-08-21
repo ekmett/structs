@@ -17,18 +17,10 @@ module Data.Struct.Order
   , newOrder
   ) where
 
-import Control.Monad
 import Control.Monad.Primitive
-import Control.Monad.ST
-import Data.Bits
-import Data.Int
-import Data.Primitive
 import Data.Struct
 import Data.Struct.Label
-import Data.Word
 import GHC.Exts
-import GHC.Prim
-import GHC.ST
 
 --------------------------------------------------------------------------------
 -- Order Maintenance
@@ -37,7 +29,7 @@ import GHC.ST
 data Order s = Order { runOrder :: SmallMutableArray# s Any }
 
 parent :: Slot Order Label
-parent = slot 3#
+parent = slot 3
 {-# INLINE parent #-}
 
 instance Eq (Order s) where (==) = eqStruct
