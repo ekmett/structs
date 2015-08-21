@@ -3,15 +3,11 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UnliftedFFITypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GHCForeignImportPrim #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 module Data.Struct.Label.Internal where
 
 import Control.Monad
@@ -21,9 +17,9 @@ import Data.Bits
 import Data.Struct.Internal
 import Data.Word
 
---------------------------------------------------------------------------------
--- * List Labeling: Maintain n keys each labeled with n^2 bits.
---------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
+-- * List Labeling: Maintain n keys each labeled with n^2 bits w/ log n update time.
+------------------------------------------------------------------------------------
 
 type Key = Word8 -- small universe for testing
 
@@ -54,7 +50,18 @@ instance Struct Label where
 
 instance Intrusive Label
 
--- | construct an explicit upper structure
+-- | Construct an explicit upper structure.
+--
+-- >>> x <- makeLabel 0 Nil Nil
+-- >>> isNil x
+-- False
+-- >>> n <- get next x
+-- >>> isNil n
+-- True
+-- >>> p <- get prev x
+-- >>> isNil p
+-- True
+--
 makeLabel :: PrimMonad m => Key -> Label (PrimState m) -> Label (PrimState m) -> m (Label (PrimState m))
 makeLabel a p n = st $ do
   this <- alloc 3
@@ -93,7 +100,7 @@ insertAfterLabel this = st $ do
   fresh <- makeLabel (v0 + unsafeShiftR (v1 - v0) 1) this n
   set next this fresh
   unless (isNil n) $ set prev n fresh
-  unless True $ growRight this v0 n 1
+  growRight this v0 n 1
   return fresh
  where
   growRight :: Label s -> Key -> Label s -> Key -> ST s ()
@@ -153,7 +160,6 @@ lastLabel xs0 = st $ go xs0 where
     p -> lastLabel p
 {-# INLINE lastLabel #-}
 
-
 -- | O(1). Split off all labels after the current point.
 cutAfterLabel :: PrimMonad m => Label (PrimState m) -> m ()
 cutAfterLabel this = st $ do
@@ -178,4 +184,3 @@ class OrdM t where
 instance OrdM Label where
   compareM i j = compare <$> getField key i <*> getField key j
   {-# INLINE compareM #-}
-

@@ -3,15 +3,10 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UnliftedFFITypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GHCForeignImportPrim #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 module Data.Struct.Order
   ( Order(..)
   , newOrder

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 module Data.Struct
   ( Struct(..)
@@ -6,7 +7,9 @@ module Data.Struct
   , construct
   , eqStruct
   , alloc
+#ifndef HLINT
   , pattern Nil
+#endif
   , isNil
   , Slot
   , Precomposable(..)
