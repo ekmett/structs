@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RankNTypes #-}
@@ -8,17 +9,20 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE UnliftedFFITypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GHCForeignImportPrim #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 module Data.Struct where
 
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Primitive
+import Data.Coerce
 import GHC.Exts
 import GHC.ST
+
+data Dict p where
+  Dict :: p => Dict p
 
 --------------------------------------------------------------------------------
 -- * Unboxed Structures
@@ -31,22 +35,34 @@ st (ST f) = primitive f
 {-# RULES "st/id" st = id #-}
 
 class Struct t where
-  destruct  :: t s -> SmallMutableArray# s Any
-  construct :: SmallMutableArray# s Any -> t s
-  -- TODO: object :: Coercion t Object requires unsafe tricks to set up, but lets me move things out of executed core and into a `cast`
+  struct :: p t -> Dict (Coercible (t s) (Object s))
+
+data Object s = Object { runObject :: SmallMutableArray# s Any }
+
+instance Struct Object where
+  struct _ = Dict
+
+-- TODO: get these to dispatch fast through 'coerce' using struct as a witness
+
+destruct :: Struct t => t s -> SmallMutableArray# s Any
+destruct x = runObject (unsafeCoerce# x)
+
+construct :: Struct t => SmallMutableArray# s Any -> t s
+construct x = unsafeCoerce# (Object x)
+
+unsafeCoerceStruct :: (Struct x, Struct y) => x s -> y s
+unsafeCoerceStruct x = unsafeCoerce# x
 
 eqStruct :: Struct t => t s -> t s -> Bool
 eqStruct x y = isTrue# (destruct x `sameSmallMutableArray#` destruct y)
 {-# INLINE eqStruct #-}
 
-data Object s = Object { runObject :: SmallMutableArray# s Any }
-
 instance Eq (Object s) where
   (==) = eqStruct
 
-instance Struct Object where
-  construct = Object
-  destruct = runObject
+-- instance Struct Object s where
+--  construct = Object
+--  destruct = runObject
 
 pattern Struct :: () => Struct t => SmallMutableArray# s Any -> t s
 pattern Struct x <- (destruct -> x) where
@@ -68,10 +84,9 @@ isNil t = case nil of
   Object n -> isTrue# (sameSmallMutableArray# (destruct t) n)
 {-# INLINE isNil #-}
 
-pattern Nil :: () => Struct t => t s
+pattern Nil :: forall t s. () => Struct t => t s
 pattern Nil <- (isNil -> True) where
-  Nil = case nil of
-    Object n -> construct n
+  Nil = unsafeCoerceStruct nil
 
 --------------------------------------------------------------------------------
 -- * Faking SmallMutableArrayArray#s

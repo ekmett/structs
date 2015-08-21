@@ -13,20 +13,19 @@
 {-# LANGUAGE GHCForeignImportPrim #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 module Data.Struct.Order
-  ( Order
+  ( Order(..)
   , newOrder
   ) where
 
 import Control.Monad.Primitive
 import Data.Struct
-import Data.Struct.Label
-import GHC.Exts
+import Data.Struct.Label.Internal
 
 --------------------------------------------------------------------------------
 -- Order Maintenance
 --------------------------------------------------------------------------------
 
-data Order s = Order { runOrder :: SmallMutableArray# s Any }
+newtype Order s = Order { runOrder :: Object s }
 
 parent :: Slot Order Label
 parent = slot 3
@@ -35,10 +34,7 @@ parent = slot 3
 instance Eq (Order s) where (==) = eqStruct
 
 instance Struct Order where
-  construct = Order
-  {-# INLINE construct #-}
-  destruct = runOrder
-  {-# INLINE destruct #-}
+  struct _ = Dict
 
 instance Intrusive Order
 

@@ -50,6 +50,7 @@ library
   exposed-modules:
     Data.Struct
     Data.Struct.Label
+    Data.Struct.Label.Internal
     Data.Struct.Order
 
   ghc-options: -Wall -fwarn-tabs
