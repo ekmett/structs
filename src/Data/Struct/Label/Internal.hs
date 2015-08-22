@@ -16,12 +16,16 @@ import Control.Monad.ST
 import Data.Bits
 import Data.Struct.Internal
 import Data.Word
+import Debug.Trace
 
 ------------------------------------------------------------------------------------
 -- * List Labeling: Maintain n keys each labeled with n^2 bits w/ log n update time.
+--
+-- After about 2^32 elements, this structure will continue to work, but will become
+-- unacceptably slow and the asymptotic analysis will become wrong.
 ------------------------------------------------------------------------------------
 
-type Key = Word8 -- small universe for testing
+type Key = Word64
 
 midBound :: Key
 midBound = unsafeShiftR maxBound 1
@@ -76,7 +80,7 @@ newLabel :: PrimMonad m => m (Label (PrimState m))
 newLabel = makeLabel midBound Nil Nil
 {-# INLINE newLabel #-}
 
--- | O(1) -- TODO: redistribute?
+-- | O(1) -- redistribute?
 deleteLabel :: PrimMonad m => Label (PrimState m) -> m ()
 deleteLabel this = st $ unless (isNil this) $ do
   p <- get prev this
@@ -89,6 +93,9 @@ deleteLabel this = st $ unless (isNil this) $ do
     set next this Nil
 {-# INLINE deleteLabel #-}
 
+delta :: Key -> Word64 -> Key
+delta m j = fromIntegral $ max 1 $ quot (fromIntegral m) (j+1)
+
 -- | O(log n) amortized. Insert a new label after the current label
 insertAfterLabel :: PrimMonad m => Label (PrimState m) -> m (Label (PrimState m))
 insertAfterLabel this = st $ do
@@ -100,30 +107,32 @@ insertAfterLabel this = st $ do
   fresh <- makeLabel (v0 + unsafeShiftR (v1 - v0) 1) this n
   set next this fresh
   unless (isNil n) $ set prev n fresh
-  growRight this v0 n 1
+  growRight this v0 n 2
   return fresh
  where
-  growRight :: Label s -> Key -> Label s -> Key -> ST s ()
+  growRight :: Label s -> Key -> Label s -> Word64 -> ST s ()
   growRight !n0 !_ Nil !j = growLeft n0 j
   growRight n0 v0 nj j = getField key nj >>= \vj -> if
-    | vj-v0 < j*j -> do nj' <- get next nj
-                        growRight n0 v0 nj' (j+1)
-    | otherwise   -> do n1 <- get next n0
-                        balance n1 v0 j j
+    | fromIntegral (vj-v0) < j*j -> do
+        nj' <- get next nj
+        growRight n0 v0 nj' (j+1)
+    | otherwise   -> do
+        n1 <- get next n0 -- start at the fresh node
+        traceShow ("rightward",v0,vj,j) $ balance n1 v0 (delta (vj-v0) j) j -- it moves over
 
-  growLeft :: Label s -> Key -> ST s ()
+  growLeft :: Label s -> Word64 -> ST s ()
   growLeft !c !j = get prev c >>= \p -> if
-    | isNil p   -> balance c minBound (div maxBound j) j -- we've found the other extreme
+    | isNil p   -> traceShow ("full rebuild",j) $ balance c 0 (delta maxBound j) j -- full rebuild
     | otherwise -> do
       vp <- getField key p
       p' <- get prev p
-      let !j' = j + 1
-      if | maxBound - vp < j*j -> growLeft p' j'
-         | otherwise           -> balance c vp (div (maxBound - vp) j') j'
+      let !j' = j+1
+      if | fromIntegral (maxBound - vp) < j'*j' -> growLeft p' j'
+         | otherwise -> traceShow ("leftward",vp,j') $ balance c vp (delta (maxBound-vp) j') j'
 
-  balance :: Label s -> Key -> Key -> Key -> ST s ()
+  balance :: Label s -> Key -> Key -> Word64 -> ST s ()
   balance !_ !_ !_ 0 = return ()
-  balance Nil _ _ _ = error "balanced past the end" -- return ()
+  balance Nil _ _ _ = return () -- error "balanced past the end" -- return ()
   balance c v dv j = do
     let !v' = v + dv
     setField key c v'
