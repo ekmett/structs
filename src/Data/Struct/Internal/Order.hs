@@ -42,7 +42,84 @@ instance Eq (Order s) where (==) = eqStruct
 instance Struct Order where
   struct _ = Dict
 
-instance IsLabel Order
+-- | O(1) compareM, O(1) amortized insert
+instance IsLabel Order where
+  key = field 0
+  {-# INLINE key #-}
+
+  prev = slot 1
+  {-# INLINE prev #-}
+
+  next = slot 2
+  {-# INLINE next #-}
+
+  compareM i j = st $ do
+    ui <- get parent i
+    uj <- get parent j
+    compareM ui uj >>= \case
+      EQ -> compare <$> getField key i <*> getField key j
+      x -> return x
+  {-# INLINE compareM #-}
+
+  insertAfter n0 = st $ do
+    mom <- get parent n0
+    k0 <- getField key n0
+    n2 <- get next n0
+    k2 <- if isNil n2 then return maxBound else getField key n2
+    let !k1 = k0 + unsafeShiftR (k2 - k0) 1
+    n1 <- makeOrder mom k1 n0 n2
+    unless (isNil n2) $ set prev n2 n1
+    set next n0 n1
+    when (k0 + 1 == k2) $ rewind mom n0 -- we have a collision, rebalance
+    return n1
+   where
+    -- find the smallest sibling
+    rewind :: Label s -> Order s -> ST s ()
+    rewind mom this = get prev this >>= \p -> if
+      | isNil p    -> rebalance mom mom this 0 64
+      | otherwise  -> get parent p >>= \dad -> if
+        | mom == dad -> rewind mom p
+        | otherwise  -> rebalance mom mom p 0 64
+  
+    -- break up the family
+    rebalance :: Label s -> Label s -> Order s -> Word64 -> Int -> ST s ()
+    rebalance mom dad this k j = unless (isNil this) $ do
+      guardian <- get parent this
+      when (mom == guardian) $ do
+        setField key this k
+        set parent this dad
+        n <- get next this
+        if | j > 0 -> rebalance mom dad n (k + deltaU) (j-1)
+           | otherwise -> do
+               stepdad <- insertAfter dad
+               rebalance mom stepdad n deltaU logU
+  
+  delete this = st $ do
+    mom <- get parent this
+  
+    p <- get prev this
+    n <- get next this
+  
+    set prev this Nil
+    set next this Nil
+  
+    x <- if
+      | isNil p -> return False
+      | otherwise -> do
+         set next p n
+         pmom <- get parent p
+         return (mom == pmom)
+  
+    y <- if
+      | isNil n -> return False
+      | otherwise -> do
+         set prev n p
+         nmom <- get parent n
+         return (mom == nmom)
+  
+    unless (x || y) $ delete mom
+  {-# INLINE delete #-}
+  
 
 makeOrder :: PrimMonad m => Label (PrimState m) -> Key -> Order (PrimState m) -> Order (PrimState m) -> m (Order (PrimState m))
 makeOrder mom a p n = st $ do
@@ -62,51 +139,6 @@ loglogU = 6
 
 deltaU :: Key
 deltaU = unsafeShiftR maxBound loglogU -- U / log U
-
--- | O(1) compareM
-instance OrdM Order where
-  compareM i j = st $ do
-    ui <- get parent i
-    uj <- get parent j
-    compareM ui uj >>= \case
-      EQ -> compare <$> getField key i <*> getField key j
-      x -> return x
-  {-# INLINE compareM #-}
-
--- | O(1) amortized insert
-insertAfterOrder :: PrimMonad m => Order (PrimState m) -> m (Order (PrimState m))
-insertAfterOrder n0 = st $ do
-  mom <- get parent n0
-  k0 <- getField key n0
-  n2 <- get next n0
-  k2 <- if isNil n2 then return maxBound else getField key n2
-  let !k1 = k0 + unsafeShiftR (k2 - k0) 1
-  n1 <- makeOrder mom k1 n0 n2
-  unless (isNil n2) $ set prev n2 n1
-  set next n0 n1
-  when (k0 + 1 == k2) $ rewind mom n0 -- we have a collision, rebalance
-  return n1
- where
-  -- find the smallest sibling
-  rewind :: Label s -> Order s -> ST s ()
-  rewind mom this = get prev this >>= \p -> if
-    | isNil p    -> rebalance mom mom this 0 64
-    | otherwise  -> get parent p >>= \dad -> if
-      | mom == dad -> rewind mom p
-      | otherwise  -> rebalance mom mom p 0 64
-
-  -- break up the family
-  rebalance :: Label s -> Label s -> Order s -> Word64 -> Int -> ST s ()
-  rebalance mom dad this k j = unless (isNil this) $ do
-    guardian <- get parent this
-    when (mom == guardian) $ do
-      setField key this k
-      set parent this dad
-      n <- get next this
-      if | j > 0 -> rebalance mom dad n (k + deltaU) (j-1)
-         | otherwise -> do
-             stepdad <- insertAfterLabel dad
-             rebalance mom stepdad n deltaU logU
 
 newOrder :: PrimMonad m => m (Order (PrimState m))
 newOrder = st $ do

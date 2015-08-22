@@ -1,13 +1,16 @@
 module Data.Struct.Label
   ( Label
   , newLabel
-  , insertAfterLabel
-  , firstLabel
-  , lastLabel
-  , cutAfterLabel
-  , cutBeforeLabel
+  , IsLabel
+    ( insertAfter
+    , least, greatest
+    , cutAfter, cutBefore
+    , compareM
+    , next
+    , prev
+    , key
+    )
   , keys
-  , OrdM(..)
   , Key
   ) where
 
