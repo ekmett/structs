@@ -8,7 +8,7 @@
 {-# LANGUAGE UnliftedFFITypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GHCForeignImportPrim #-}
-module Data.Struct.Label.Internal where
+module Data.Struct.Internal.Label where
 
 import Control.Monad
 import Control.Monad.Primitive

@@ -11,4 +11,4 @@ module Data.Struct.Label
   , Key
   ) where
 
-import Data.Struct.Label.Internal
+import Data.Struct.Internal.Label
