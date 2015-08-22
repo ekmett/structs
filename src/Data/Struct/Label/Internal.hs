@@ -50,7 +50,7 @@ instance Struct Label where
 
 instance IsLabel Label
 
--- | Construct an explicit upper structure.
+-- | Construct an explicit list labeling structure.
 --
 -- >>> x <- makeLabel 0 Nil Nil
 -- >>> isNil x
