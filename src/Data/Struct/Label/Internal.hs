@@ -16,7 +16,6 @@ import Control.Monad.ST
 import Data.Bits
 import Data.Struct.Internal
 import Data.Word
-import Debug.Trace
 
 ------------------------------------------------------------------------------------
 -- * List Labeling: Maintain n keys each labeled with n^2 bits w/ log n update time.
@@ -118,17 +117,17 @@ insertAfterLabel this = st $ do
         growRight n0 v0 nj' (j+1)
     | otherwise   -> do
         n1 <- get next n0 -- start at the fresh node
-        traceShow ("rightward",v0,vj,j) $ balance n1 v0 (delta (vj-v0) j) j -- it moves over
+        balance n1 v0 (delta (vj-v0) j) j -- it moves over
 
   growLeft :: Label s -> Word64 -> ST s ()
   growLeft !c !j = get prev c >>= \p -> if
-    | isNil p   -> traceShow ("full rebuild",j) $ balance c 0 (delta maxBound j) j -- full rebuild
+    | isNil p   -> balance c 0 (delta maxBound j) j -- full rebuild
     | otherwise -> do
       vp <- getField key p
       p' <- get prev p
       let !j' = j+1
       if | fromIntegral (maxBound - vp) < j'*j' -> growLeft p' j'
-         | otherwise -> traceShow ("leftward",vp,j') $ balance c vp (delta (maxBound-vp) j') j'
+         | otherwise -> balance c vp (delta (maxBound-vp) j') j'
 
   balance :: Label s -> Key -> Key -> Word64 -> ST s ()
   balance !_ !_ !_ 0 = return ()
