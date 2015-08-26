@@ -10,15 +10,13 @@
 module Data.Struct.Label
   ( Label
   , newLabel
-  , IsLabel
-    ( insertAfter
-    , least, greatest
-    , cutAfter, cutBefore
-    , compareM
-    , next
-    , prev
-    , key
-    )
+  , insertAfter
+  , delete
+  , least
+  , greatest
+  , cutAfter
+  , cutBefore
+  , compareM
   , keys
   , Key
   ) where

@@ -24,7 +24,9 @@ import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Bits
 import Data.Struct.Internal
-import Data.Struct.Internal.Label
+import Data.Struct.Label (Label, Key, newLabel)
+import qualified Data.Struct.Internal.Label as Label (key)
+import qualified Data.Struct.Label as Label
 import Data.Word
 
 --------------------------------------------------------------------------------
@@ -42,93 +44,26 @@ import Data.Word
 
 newtype Order s = Order { runOrder :: Object s }
 
-parent :: Slot Order Label
-parent = slot 3
-{-# INLINE parent #-}
-
 instance Eq (Order s) where (==) = eqStruct
 
 instance Struct Order where
   struct _ = Dict
 
--- | O(1) compareM, O(1) amortized insert
-instance IsLabel Order where
-  key = field 0
-  {-# INLINE key #-}
+key :: Field Order Key
+key = field 0
+{-# INLINE key #-}
 
-  prev = slot 1
-  {-# INLINE prev #-}
+next :: Slot Order Order
+next = slot 1
+{-# INLINE next #-}
 
-  next = slot 2
-  {-# INLINE next #-}
+prev :: Slot Order Order
+prev = slot 2
+{-# INLINE prev #-}
 
-  compareM i j = st $ do
-    ui <- get parent i
-    uj <- get parent j
-    compareM ui uj >>= \case
-      EQ -> compare <$> getField key i <*> getField key j
-      x -> return x
-  {-# INLINE compareM #-}
-
-  insertAfter n0 = st $ do
-    mom <- get parent n0
-    k0 <- getField key n0
-    n2 <- get next n0
-    k2 <- if isNil n2 then return maxBound else getField key n2
-    let !k1 = k0 + unsafeShiftR (k2 - k0) 1
-    n1 <- makeOrder mom k1 n0 n2
-    unless (isNil n2) $ set prev n2 n1
-    set next n0 n1
-    when (k0 + 1 == k2) $ rewind mom n0 -- we have a collision, rebalance
-    return n1
-   where
-    -- find the smallest sibling
-    rewind :: Label s -> Order s -> ST s ()
-    rewind mom this = get prev this >>= \p -> if
-      | isNil p    -> rebalance mom mom this 0 64
-      | otherwise  -> get parent p >>= \dad -> if
-        | mom == dad -> rewind mom p
-        | otherwise  -> rebalance mom mom p 0 64
-  
-    -- break up the family
-    rebalance :: Label s -> Label s -> Order s -> Word64 -> Int -> ST s ()
-    rebalance mom dad this k j = unless (isNil this) $ do
-      guardian <- get parent this
-      when (mom == guardian) $ do
-        setField key this k
-        set parent this dad
-        n <- get next this
-        if | j > 0 -> rebalance mom dad n (k + deltaU) (j-1)
-           | otherwise -> do
-               stepdad <- insertAfter dad
-               rebalance mom stepdad n deltaU logU
-  
-  delete this = st $ do
-    mom <- get parent this
-  
-    p <- get prev this
-    n <- get next this
-  
-    set prev this Nil
-    set next this Nil
-  
-    x <- if
-      | isNil p -> return False
-      | otherwise -> do
-         set next p n
-         pmom <- get parent p
-         return (mom == pmom)
-  
-    y <- if
-      | isNil n -> return False
-      | otherwise -> do
-         set prev n p
-         nmom <- get parent n
-         return (mom == nmom)
-  
-    unless (x || y) $ delete mom
-  {-# INLINE delete #-}
-  
+parent :: Slot Order Label
+parent = slot 3
+{-# INLINE parent #-}
 
 makeOrder :: PrimMonad m => Label (PrimState m) -> Key -> Order (PrimState m) -> Order (PrimState m) -> m (Order (PrimState m))
 makeOrder mom a p n = st $ do
@@ -139,6 +74,78 @@ makeOrder mom a p n = st $ do
   set next this n
   return this
 {-# INLINE makeOrder #-}
+
+-- | O(1) compareM, O(1) amortized insert
+compareM :: PrimMonad m => Order (PrimState m) -> Order (PrimState m) -> m Ordering
+compareM i j = st $ do
+  ui <- get parent i
+  uj <- get parent j
+  Label.compareM ui uj >>= \case
+    EQ -> compare <$> getField key i <*> getField key j
+    x -> return x
+{-# INLINE compareM #-}
+
+insertAfter :: PrimMonad m => Order (PrimState m) -> m (Order (PrimState m))
+insertAfter n0 = st $ do
+  mom <- get parent n0
+  k0 <- getField key n0
+  n2 <- get next n0
+  k2 <- if isNil n2 then return maxBound else getField key n2
+  let !k1 = k0 + unsafeShiftR (k2 - k0) 1
+  n1 <- makeOrder mom k1 n0 n2
+  unless (isNil n2) $ set prev n2 n1
+  set next n0 n1
+  when (k0 + 1 == k2) $ rewind mom n0 -- we have a collision, rebalance
+  return n1
+ where
+  -- find the smallest sibling
+  rewind :: Label s -> Order s -> ST s ()
+  rewind mom this = get prev this >>= \p -> if
+    | isNil p    -> rebalance mom mom this 0 64
+    | otherwise  -> get parent p >>= \dad -> if
+      | mom == dad -> rewind mom p
+      | otherwise  -> rebalance mom mom p 0 64
+
+  -- break up the family
+  rebalance :: Label s -> Label s -> Order s -> Word64 -> Int -> ST s ()
+  rebalance mom dad this k j = unless (isNil this) $ do
+    guardian <- get parent this
+    when (mom == guardian) $ do
+      setField key this k
+      set parent this dad
+      n <- get next this
+      if | j > 0 -> rebalance mom dad n (k + deltaU) (j-1)
+         | otherwise -> do
+             stepdad <- Label.insertAfter dad
+             rebalance mom stepdad n deltaU logU
+
+delete :: PrimMonad m => Order (PrimState m) -> m ()
+delete this = st $ do
+  mom <- get parent this
+
+  p <- get prev this
+  n <- get next this
+
+  set prev this Nil
+  set next this Nil
+
+  x <- if
+    | isNil p -> return False
+    | otherwise -> do
+       set next p n
+       pmom <- get parent p
+       return (mom == pmom)
+
+  y <- if
+    | isNil n -> return False
+    | otherwise -> do
+       set prev n p
+       nmom <- get parent n
+       return (mom == nmom)
+
+  unless (x || y) $ Label.delete mom
+{-# INLINE delete #-}
+
 
 logU :: Int
 logU = 64
@@ -158,7 +165,7 @@ newOrder = st $ do
 value :: PrimMonad m => Order (PrimState m) -> m (Key, Key)
 value this = st $ do
   mom <- get parent this
-  (,) <$> getField key mom <*> getField key this
+  (,) <$> getField Label.key mom <*> getField key this
 {-# INLINE value #-}
 
 -- O(n) sweep to the right from the current node, showing all values for debugging

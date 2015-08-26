@@ -10,9 +10,11 @@
 module Data.Struct.Order
   ( Order(..)
   , newOrder
-  , IsLabel ( insertAfter, delete )
+  , insertAfter
+  , delete
   , value
+  , Key
   ) where
 
-import Data.Struct.Internal.Label
+import Data.Struct.Internal.Label (Key)
 import Data.Struct.Internal.Order
