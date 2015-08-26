@@ -15,6 +15,7 @@ module Data.Struct.LinkCut
   , root
   , cost
   , parent
+  , connected
   ) where
 
 import Control.Monad.Primitive

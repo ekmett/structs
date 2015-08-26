@@ -45,6 +45,7 @@ new a = st $ do
   setField value this a
   setField summary this a
   return this
+{-# INLINE new #-}
 
 -- | O(log n). @'cut' v@ removes the linkage between @v@ upwards to whatever tree it was in, making @v@ a root node.
 --
@@ -59,8 +60,9 @@ cut this = st $ do
     set parent l Nil
     v <- getField value this
     setField summary this v
+{-# INLINE cut #-}
 
--- | O(log n). @'link' v w@ inserts @v@ which must be the root of a tree in as a child of @w@. @v@ and @w@ must not lie in the same tree.
+-- | O(log n). @'link' v w@ inserts @v@ which must be the root of a tree in as a child of @w@. @v@ and @w@ must not be 'connected'.
 link :: (PrimMonad m, Monoid a) => LinkCut a (PrimState m) -> LinkCut a (PrimState m) -> m ()
 link v w = st $ do
   access v
@@ -72,6 +74,12 @@ link v w = st $ do
   slw <- summarize lw
   vw <- getField value w
   setField summary w (slw `mappend` vw `mappend` sv)
+{-# INLINE link #-}
+
+-- | O(log n). @'connected' v w@ determines if @v@ and @w@ inhabit the same tree.
+connected :: (PrimMonad m, Monoid a) => LinkCut a (PrimState m) -> LinkCut a (PrimState m) -> m Bool
+connected v w = st $ (==) <$> root v <*> root w
+{-# INLINE connected #-}
 
 -- | O(log n). @'cost' v@ computes the root-to-leaf path cost of @v@ under whatever 'Monoid' was built into the tree.
 --
@@ -80,6 +88,7 @@ cost :: (PrimMonad m, Monoid a) => LinkCut a (PrimState m) -> m a
 cost v = st $ do
   access v
   getField summary v
+{-# INLINE cost #-}
 
 -- | O(log n). Find the root of a tree.
 --
@@ -94,6 +103,7 @@ root this = st $ do
     leftmost v = do
       l <- get left v 
       if isNil l then return v else leftmost l
+{-# INLINE root #-}
 
 -- | O(log n). Move upward one level.
 --
@@ -113,12 +123,14 @@ up this = st $ do
     rightmost v = do
       p <- get right v
       if isNil p then return v else rightmost p
+{-# INLINE up #-}
   
 -- | O(1)
 summarize :: Monoid a => LinkCut a s -> ST s a
 summarize this 
   | isNil this = return mempty 
   | otherwise  = getField summary this
+{-# INLINE summarize #-}
   
 -- | O(log n)
 access :: Monoid a => LinkCut a s -> ST s ()
