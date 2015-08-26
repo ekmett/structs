@@ -1,5 +1,14 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (C) 2015 Edward Kmett
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Edward Kmett <ekmett@gmail.com>
+-- Stability   :  experimental
+-- Portability :  non-portable
+--
+-----------------------------------------------------------------------------
 module Data.Struct
   ( Struct(..)
   , Object

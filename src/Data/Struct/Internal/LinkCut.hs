@@ -1,4 +1,14 @@
--- | Amortized Link-Cut trees via splay trees based on Tarjan's little book.
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (C) 2015 Edward Kmett
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Edward Kmett <ekmett@gmail.com>
+-- Stability   :  experimental
+-- Portability :  non-portable
+--
+-- Amortized Link-Cut trees via splay trees based on Tarjan's little book.
+-----------------------------------------------------------------------------
+
 module Data.Struct.Internal.LinkCut where
 
 import Control.Monad
