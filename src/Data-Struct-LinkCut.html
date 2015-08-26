@@ -24,17 +24,18 @@
 <a name="line-15"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>root</span>
 <a name="line-16"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>cost</span>
 <a name="line-17"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>parent</span>
-<a name="line-18"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
-<a name="line-19"></a>
-<a name="line-20"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Primitive</span>
-<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Struct</span><span class='hs-varop'>.</span><span class='hs-conid'>Internal</span><span class='hs-varop'>.</span><span class='hs-conid'>LinkCut</span> <span class='hs-varid'>hiding</span> <span class='hs-layout'>(</span><span class='hs-varid'>parent</span><span class='hs-layout'>)</span>
-<a name="line-22"></a>
-<a name="line-23"></a><a name="parent"></a><span class='hs-comment'>-- | O(log n). Find the parent of a node.</span>
-<a name="line-24"></a><span class='hs-comment'>--</span>
-<a name="line-25"></a><span class='hs-comment'>-- This will return 'Nil' if the parent does not exist.</span>
-<a name="line-26"></a><span class='hs-comment'>--</span>
-<a name="line-27"></a><span class='hs-comment'>-- Repeated calls on the same value without intermediate accesses are O(1).</span>
-<a name="line-28"></a><span class='hs-definition'>parent</span> <span class='hs-keyglyph'>::</span> <span class='hs-layout'>(</span><span class='hs-conid'>PrimMonad</span> <span class='hs-varid'>m</span><span class='hs-layout'>,</span> <span class='hs-conid'>Monoid</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-conid'>LinkCut</span> <span class='hs-varid'>a</span> <span class='hs-layout'>(</span><span class='hs-conid'>PrimState</span> <span class='hs-varid'>m</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>m</span> <span class='hs-layout'>(</span><span class='hs-conid'>LinkCut</span> <span class='hs-varid'>a</span> <span class='hs-layout'>(</span><span class='hs-conid'>PrimState</span> <span class='hs-varid'>m</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
-<a name="line-29"></a><span class='hs-definition'>parent</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>up</span>
+<a name="line-18"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>connected</span>
+<a name="line-19"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
+<a name="line-20"></a>
+<a name="line-21"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Primitive</span>
+<a name="line-22"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Struct</span><span class='hs-varop'>.</span><span class='hs-conid'>Internal</span><span class='hs-varop'>.</span><span class='hs-conid'>LinkCut</span> <span class='hs-varid'>hiding</span> <span class='hs-layout'>(</span><span class='hs-varid'>parent</span><span class='hs-layout'>)</span>
+<a name="line-23"></a>
+<a name="line-24"></a><a name="parent"></a><span class='hs-comment'>-- | O(log n). Find the parent of a node.</span>
+<a name="line-25"></a><span class='hs-comment'>--</span>
+<a name="line-26"></a><span class='hs-comment'>-- This will return 'Nil' if the parent does not exist.</span>
+<a name="line-27"></a><span class='hs-comment'>--</span>
+<a name="line-28"></a><span class='hs-comment'>-- Repeated calls on the same value without intermediate accesses are O(1).</span>
+<a name="line-29"></a><span class='hs-definition'>parent</span> <span class='hs-keyglyph'>::</span> <span class='hs-layout'>(</span><span class='hs-conid'>PrimMonad</span> <span class='hs-varid'>m</span><span class='hs-layout'>,</span> <span class='hs-conid'>Monoid</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-conid'>LinkCut</span> <span class='hs-varid'>a</span> <span class='hs-layout'>(</span><span class='hs-conid'>PrimState</span> <span class='hs-varid'>m</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>m</span> <span class='hs-layout'>(</span><span class='hs-conid'>LinkCut</span> <span class='hs-varid'>a</span> <span class='hs-layout'>(</span><span class='hs-conid'>PrimState</span> <span class='hs-varid'>m</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
+<a name="line-30"></a><span class='hs-definition'>parent</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>up</span>
 </pre></body>
 </html>
