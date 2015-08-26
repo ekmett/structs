@@ -51,8 +51,10 @@ library
     Data.Struct
     Data.Struct.Internal
     Data.Struct.Internal.Label
+    Data.Struct.Internal.LinkCut
     Data.Struct.Internal.Order
     Data.Struct.Label
+    Data.Struct.LinkCut
     Data.Struct.Order
 
   ghc-options: -Wall -fwarn-tabs
