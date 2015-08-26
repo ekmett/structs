@@ -184,6 +184,12 @@ compareM i j = compare <$> getField key i <*> getField key j
   
 delta :: Key -> Word64 -> Key
 delta m j = fromIntegral $ max 1 $ quot (fromIntegral m) (j+1)
+{-# INLINE delta #-}
+
+-- | O(1). Extract the current value assignment for this label. Any label mutation, even on other labels in this label structure, may change this answer.
+value :: PrimMonad m => Label (PrimState m) -> m Key
+value this = getField key this
+{-# INLINE value #-}
 
 -- | O(n). Get the keys of every label from here to the right.
 keys :: PrimMonad m => Label (PrimState m) -> m [Key]

@@ -24,9 +24,10 @@ import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Bits
 import Data.Struct.Internal
-import Data.Struct.Label (Label, Key, newLabel)
-import qualified Data.Struct.Internal.Label as Label (key)
+import Data.Struct.Label (Label, newLabel)
 import qualified Data.Struct.Label as Label
+import Data.Struct.Internal.Label (Key)
+import qualified Data.Struct.Internal.Label as Label (key)
 import Data.Word
 
 --------------------------------------------------------------------------------

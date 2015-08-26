@@ -12,8 +12,6 @@ module Data.Struct.Order
   , newOrder
   , insertAfter
   , delete
-  , value
-  , Key
   ) where
 
 import Data.Struct.Internal.Label (Key)

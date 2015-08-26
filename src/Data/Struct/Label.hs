@@ -17,8 +17,6 @@ module Data.Struct.Label
   , cutAfter
   , cutBefore
   , compareM
-  , keys
-  , Key
   ) where
 
 import Data.Struct.Internal.Label
