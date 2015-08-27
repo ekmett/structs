@@ -1,14 +1,6 @@
 {-# LANGUAGE Unsafe #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE UnliftedFFITypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GHCForeignImportPrim #-}
+{-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2015 Edward Kmett
@@ -86,7 +78,8 @@ compareM i j
   | otherwise = st $ do
   ui <- get parent i
   uj <- get parent j
-  Label.compareM ui uj >>= \case
+  xs <- Label.compareM ui uj
+  case xs of
     EQ -> compare <$> getField key i <*> getField key j
     x -> return x
 {-# INLINE compareM #-}
@@ -107,11 +100,13 @@ insertAfter n0 = st $ do
  where
   -- find the smallest sibling
   rewind :: Label s -> Order s -> ST s ()
-  rewind mom this = get prev this >>= \p -> if
-    | isNil p    -> rebalance mom mom this 0 64
-    | otherwise  -> get parent p >>= \dad -> if
-      | mom == dad -> rewind mom p
-      | otherwise  -> rebalance mom mom p 0 64
+  rewind mom this = do
+    p <- get prev this
+    if isNil p then rebalance mom mom this 0 64
+    else do
+      dad <- get parent p
+      if mom == dad then rewind mom p
+      else rebalance mom mom p 0 64
 
   -- break up the family
   rebalance :: Label s -> Label s -> Order s -> Word64 -> Int -> ST s ()

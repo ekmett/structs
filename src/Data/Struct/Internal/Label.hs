@@ -1,13 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE Unsafe #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2015 Edward Kmett
@@ -119,23 +113,28 @@ insertAfter this = st $ do
  where
   growRight :: Label s -> Key -> Label s -> Word64 -> ST s ()
   growRight !n0 !_ Nil !j = growLeft n0 j
-  growRight n0 v0 nj j = getField key nj >>= \vj -> if
-    | fromIntegral (vj-v0) < j*j -> do
-        nj' <- get next nj
-        growRight n0 v0 nj' (j+1)
-    | otherwise   -> do
-        n1 <- get next n0 -- start at the fresh node
-        balance n1 v0 (delta (vj-v0) j) j -- it moves over
+  growRight n0 v0 nj j = do
+    vj <- getField key nj
+    if fromIntegral (vj-v0) < j*j
+    then do
+      nj' <- get next nj
+      growRight n0 v0 nj' (j+1)
+    else do
+      n1 <- get next n0 -- start at the fresh node
+      balance n1 v0 (delta (vj-v0) j) j -- it moves over
 
   growLeft :: Label s -> Word64 -> ST s ()
-  growLeft !c !j = get prev c >>= \p -> if
-    | isNil p   -> balance c 0 (delta maxBound j) j -- full rebuild
-    | otherwise -> do
+  growLeft !c !j = do
+    p <- get prev c
+    if isNil p
+    then balance c 0 (delta maxBound j) j -- full rebuild
+    else do
       vp <- getField key p
       p' <- get prev p
       let !j' = j+1
-      if | fromIntegral (maxBound - vp) < j'*j' -> growLeft p' j'
-         | otherwise -> balance c vp (delta (maxBound-vp) j') j'
+      if fromIntegral (maxBound - vp) < j'*j'
+      then growLeft p' j'
+      else balance c vp (delta (maxBound-vp) j') j'
 
   balance :: Label s -> Key -> Key -> Word64 -> ST s ()
   balance !_ !_ !_ 0 = return ()
@@ -173,9 +172,11 @@ least xs0
   | isNil xs0 = throw NullPointerException
   | otherwise = st $ go xs0 where
   go :: Label s -> ST s (Label s)
-  go this = get prev this >>= \p -> if
-    | isNil p   -> return this
-    | otherwise -> least p
+  go this = do
+    p <- get prev this
+    if isNil p
+    then return this
+    else go p
 {-# INLINE least #-}
 
 -- | O(n). Retrieve the greatest label
@@ -184,9 +185,11 @@ greatest xs0
   | isNil xs0 = throw NullPointerException
   | otherwise = st $ go xs0 where
   go :: Label s -> ST s (Label s)
-  go this = get next this >>= \case
-    Nil -> return this
-    p -> greatest p
+  go this = do
+    n <- get next this
+    if isNil n
+    then return this
+    else go n
 {-# INLINE greatest #-}
 
 -- | O(1). Compare two labels for ordering.
@@ -207,9 +210,10 @@ value this = getField key this
 
 -- | O(n). Get the keys of every label from here to the right.
 keys :: PrimMonad m => Label (PrimState m) -> m [Key]
-keys this = st $ if
-  | isNil this -> return []
-  | otherwise -> do
+keys this = st $
+  if isNil this
+  then return []
+  else do
     x <- getField key this
     n <- get next this
     xs <- keys n
