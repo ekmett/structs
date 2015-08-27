@@ -45,7 +45,6 @@ library
     base >= 4.8 && < 5,
     deepseq,
     ghc-prim,
-    lens,
     primitive
 
   exposed-modules:
