@@ -17,20 +17,19 @@ module Data.Struct
   , construct
   , eqStruct
   , alloc
+  -- * Nil
 #ifndef HLINT
   , pattern Nil
 #endif
   , isNil
-  , Slot
-  , Precomposable(..)
-  , slot
-  , get
-  , set
-  , Field
-  , field
+  , NullPointerException(..)
+  -- * Slots and Fields
+  , Slot, slot
+  , get, set
+  , Field, field
   , unboxedField
-  , getField
-  , setField
+  , getField, setField
+  , Precomposable(..)
   ) where
 
 import Data.Struct.Internal

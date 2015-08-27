@@ -11,6 +11,7 @@
 
 module Data.Struct.Internal.LinkCut where
 
+import Control.Exception
 import Control.Monad
 import Control.Monad.Primitive
 import Control.Monad.ST
@@ -189,6 +190,7 @@ summarize this
 -- | O(log n)
 access :: Monoid a => LinkCut a s -> ST s ()
 access this = do
+  when (isNil this) $ throw NullPointerException
   splay this
   -- the right hand child is no longer preferred
   r <- get right this

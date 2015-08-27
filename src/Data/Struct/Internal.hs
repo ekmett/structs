@@ -8,6 +8,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -24,6 +25,7 @@
 
 module Data.Struct.Internal where
 
+import Control.Exception
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Primitive
@@ -35,6 +37,8 @@ import GHC.ST
 {-# ANN module "HLint: ignore Eta reduce" #-}
 {-# ANN module "HLint: ignore Unused LANGUAGE pragma" #-}
 #endif
+
+data NullPointerException = NullPointerException deriving (Show, Exception)
 
 data Dict p where
   Dict :: p => Dict p
