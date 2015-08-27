@@ -37,10 +37,12 @@ import Data.Word
 
 -- | This structure maintains an order-maintenance structure as two levels of list-labeling.
 --
--- The upper labeling scheme holds (n / log w) elements in a universe of size w^2, operating in O(log n) amortized time per operation.
+-- The upper labeling scheme holds @(n / log w)@ elements in a universe of size @w^2@, operating in O(log n) amortized time per operation.
 --
--- It is accelerated by an indirection structure where each smaller universe has size O(log n), but O(1) expected update cost, so we
+-- It is accelerated by an indirection structure where each smaller universe holds O(log w) elements, with total label space @2^log w = w@ and O(1) expected update cost, so we
 -- can charge rebuilds to the upper structure to the lower structure.
+--
+-- Every insert to the upper structure is amortized across @O(log w)@ operations below.
 --
 -- This means that inserts are O(1) amortized, while comparisons remain O(1) worst-case.
 
