@@ -7,7 +7,6 @@
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
--- Amortized Link-Cut trees via splay trees based on Tarjan's little book.
 -----------------------------------------------------------------------------
 
 module Data.Struct.Internal.LinkCut where
@@ -22,6 +21,27 @@ import Data.Struct.Internal
 {-# ANN module "HLint: ignore Redundant do" #-}
 #endif
 
+-- | Amortized Link-Cut trees via splay trees based on Tarjan's little book.
+--
+-- These support O(log n) operations for a lot of stuff.
+--
+-- The parameter `a` is an arbitrary user-supplied monoid that will be summarized
+-- along the path to the root of the tree.
+--
+-- >>> import Data.Monoid
+-- >>> x <- new (Sum 1)
+-- >>> y <- new (Sum 1)
+-- >>> link x y -- now x is a child of y
+-- >>> connected x y
+-- True
+
+-- >>> z <- new (Sum 1)
+-- >>> link z y -- now z is a child of y
+-- >>> r <- root z
+-- >>> r == y
+-- True
+-- >>> cost z
+-- Sum 2
 newtype LinkCut a s = LinkCut (Object s)
 
 instance Struct (LinkCut a) where
@@ -46,7 +66,7 @@ new a = st $ do
   this <- alloc 6
   set path this Nil
   set parent this Nil
-  set left this Nil 
+  set left this Nil
   set right this Nil
   setField value this a
   setField summary this a
@@ -71,15 +91,19 @@ cut this = st $ do
 -- | O(log n). @'link' v w@ inserts @v@ which must be the root of a tree in as a child of @w@. @v@ and @w@ must not be 'connected'.
 link :: (PrimMonad m, Monoid a) => LinkCut a (PrimState m) -> LinkCut a (PrimState m) -> m ()
 link v w = st $ do
+  --   w          w
+  --  a  , v  => a v
+  --
+  --
   access v
   access w
   set parent v w
   set right w v
-  sv <- getField summary v
-  lw <- get left w
-  slw <- summarize lw
+  a <- get left w
+  sa <- summarize a
   vw <- getField value w
-  setField summary w (slw `mappend` vw `mappend` sv)
+  sv <- getField summary v
+  setField summary w (sa `mappend` vw `mappend` sv)
 {-# INLINE link #-}
 
 -- | O(log n). @'connected' v w@ determines if @v@ and @w@ inhabit the same tree.
@@ -103,11 +127,11 @@ root :: (PrimMonad m, Monoid a) => LinkCut a (PrimState m) -> m (LinkCut a (Prim
 root this = st $ do
     access this
     r <- leftmost this
-    splay r
+    access r -- the preferred path now ends at the root
     return r
   where
     leftmost v = do
-      l <- get left v 
+      l <- get left v
       if isNil l then return v else leftmost l
 {-# INLINE root #-}
 
@@ -123,21 +147,21 @@ up this = st $ do
     if isNil a then return Nil
     else do
       p <- rightmost a
-      splay p
+      access p
       return p
   where
     rightmost v = do
       p <- get right v
       if isNil p then return v else rightmost p
 {-# INLINE up #-}
-  
+
 -- | O(1)
 summarize :: Monoid a => LinkCut a s -> ST s a
-summarize this 
-  | isNil this = return mempty 
+summarize this
+  | isNil this = return mempty
   | otherwise  = getField summary this
 {-# INLINE summarize #-}
-  
+
 -- | O(log n)
 access :: Monoid a => LinkCut a s -> ST s ()
 access this = do
@@ -179,7 +203,7 @@ access this = do
       vv <- getField value v
       setField summary v (sw `mappend` vv)
       go v
-       
+
 -- | O(log n). Splay within an auxiliary tree
 splay :: Monoid a => LinkCut a s -> ST s ()
 splay x = do
@@ -332,6 +356,6 @@ splay x = do
       unless (isNil gg) $ do
         ggl <- get left gg
         -- NB: this replacement leaves the summary intact
-        if ggl == g then set left gg x 
+        if ggl == g then set left gg x
         else set right gg x
         splay x
