@@ -28,20 +28,31 @@ import Data.Struct.Internal
 -- The parameter `a` is an arbitrary user-supplied monoid that will be summarized
 -- along the path to the root of the tree.
 --
--- >>> import Data.Monoid
--- >>> x <- new (Sum 1)
--- >>> y <- new (Sum 1)
+-- In this example the choice of 'Monoid' is 'String', so we can get a textual description of the path to the root.
+--
+-- >>> x <- new "x"
+-- >>> y <- new "y"
 -- >>> link x y -- now x is a child of y
 -- >>> connected x y
 -- True
-
--- >>> z <- new (Sum 1)
--- >>> link z y -- now z is a child of y
+-- >>> z <- new "z"
+-- >>> link z x -- now z is a child of y
 -- >>> r <- root z
 -- >>> r == y
 -- True
 -- >>> cost z
--- Sum 2
+-- "yxz"
+-- >>> w <- new "w"
+-- >>> u <- new "u"
+-- >>> v <- new "v"
+-- >>> link u w
+-- >>> link v x
+-- >>> link w z
+-- >>> cost u
+-- "yxzwu"
+-- >>> cut z
+-- >>> cost u
+-- "zwu"
 newtype LinkCut a s = LinkCut (Object s)
 
 instance Struct (LinkCut a) where
@@ -82,7 +93,6 @@ cut this = st $ do
   l <- get left this
   unless (isNil l) $ do
     set left this Nil
-    set path l this
     set parent l Nil
     v <- getField value this
     setField summary this v
@@ -91,19 +101,13 @@ cut this = st $ do
 -- | O(log n). @'link' v w@ inserts @v@ which must be the root of a tree in as a child of @w@. @v@ and @w@ must not be 'connected'.
 link :: (PrimMonad m, Monoid a) => LinkCut a (PrimState m) -> LinkCut a (PrimState m) -> m ()
 link v w = st $ do
-  --   w          w
-  --  a  , v  => a v
+  --   w          w<~v
+  --  a  , v  => a
   --
   --
   access v
   access w
-  set parent v w
-  set right w v
-  a <- get left w
-  sa <- summarize a
-  vw <- getField value w
-  sv <- getField summary v
-  setField summary w (sa `mappend` vw `mappend` sv)
+  set path v w
 {-# INLINE link #-}
 
 -- | O(log n). @'connected' v w@ determines if @v@ and @w@ inhabit the same tree.
@@ -127,12 +131,13 @@ root :: (PrimMonad m, Monoid a) => LinkCut a (PrimState m) -> m (LinkCut a (Prim
 root this = st $ do
     access this
     r <- leftmost this
-    access r -- the preferred path now ends at the root
+    splay r -- r is already in the root aux tree
     return r
   where
     leftmost v = do
       l <- get left v
-      if isNil l then return v else leftmost l
+      if isNil l then return v
+      else leftmost l
 {-# INLINE root #-}
 
 -- | O(log n). Move upward one level.
@@ -147,12 +152,13 @@ up this = st $ do
     if isNil a then return Nil
     else do
       p <- rightmost a
-      access p
+      splay p -- p is already in the root aux tree
       return p
   where
     rightmost v = do
       p <- get right v
-      if isNil p then return v else rightmost p
+      if isNil p then return v
+      else rightmost p
 {-# INLINE up #-}
 
 -- | O(1)
@@ -169,13 +175,13 @@ access this = do
   r <- get right this
   unless (isNil r) $ do
     set right this Nil
+    set parent r Nil
+    set path r this
     -- resummarize
     l <- get left this
     sl <- summarize l
     v <- getField value this
     setField summary this (sl `mappend` v)
-    set parent r Nil
-    set path r this
   go this
  where
   go v = do
@@ -191,17 +197,24 @@ access this = do
       unless (isNil b) $ do -- b is no longer on the preferred path
         set path b w
         set parent b Nil
+
+      set right w c
+      unless (isNil c) $ set parent c w
       sa <- summarize a
       vw <- getField value w
       sc <- summarize c
       let sw = sa `mappend` vw `mappend` sc
       setField summary w sw
+
       set parent w v
       set left v w
-      set right w c
-      unless (isNil c) $ set parent c w
       vv <- getField value v
       setField summary v (sw `mappend` vv)
+
+      p <- get path w
+      set path v p
+      set path w Nil
+
       go v
 
 -- | O(log n). Splay within an auxiliary tree
