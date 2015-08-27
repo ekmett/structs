@@ -90,20 +90,18 @@ alloc (I# n#) = primitive $ \s -> case newSmallArray# n# undefined s of (# s', b
 -- * Tony Hoare's billion dollar mistake
 --------------------------------------------------------------------------------
 
-nil :: Object s
-nil = runST $ primitive $ \s -> case unsafeCoerce# newSmallArray# 0# undefined s of (# s', u #) -> (# s', Object u #)
-{-# NOINLINE nil #-}
+data Box = Box !Null
+data Null = Null
 
 isNil :: Struct t => t s -> Bool
-isNil t = case nil of
-  Object n -> isTrue# (sameSmallMutableArray# (destruct t) n)
+isNil t = isTrue# (unsafeCoerce# reallyUnsafePtrEquality# (destruct t) Null)
 {-# INLINE isNil #-}
 
 #ifndef HLINT
 -- | Truly imperative.
 pattern Nil :: forall t s. () => Struct t => t s
 pattern Nil <- (isNil -> True) where
-  Nil = unsafeCoerceStruct nil
+  Nil = unsafeCoerce# Box Null
 #endif
 
 --------------------------------------------------------------------------------
