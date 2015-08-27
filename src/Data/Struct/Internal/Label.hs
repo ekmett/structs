@@ -19,6 +19,7 @@
 -----------------------------------------------------------------------------
 module Data.Struct.Internal.Label where
 
+import Control.Exception
 import Control.Monad
 import Control.Monad.Primitive
 import Control.Monad.ST
@@ -54,7 +55,7 @@ prev :: Slot Label Label
 prev = slot 2
 {-# INLINE prev #-}
 
--- | Logarithmic time list labeling solution 
+-- | Logarithmic time list labeling solution
 newtype Label s = Label (Object s)
 
 instance Eq (Label s) where (==) = eqStruct
@@ -104,6 +105,7 @@ delete this = st $ unless (isNil this) $ do
 -- | O(log n) amortized. Insert a new label after a given label.
 insertAfter :: PrimMonad m => Label (PrimState m) -> m (Label (PrimState m))
 insertAfter this = st $ do
+  when (isNil this) $ throw NullPointerException
   v0 <- getField key this
   n <- get next this
   v1 <- if isNil n
@@ -148,6 +150,7 @@ insertAfter this = st $ do
 -- | O(1). Split off all labels after the current label.
 cutAfter :: PrimMonad m => Label (PrimState m) -> m ()
 cutAfter this = st $ do
+  when (isNil this) $ throw NullPointerException
   n <- get next this
   unless (isNil n) $ do
     set next this Nil
@@ -157,6 +160,7 @@ cutAfter this = st $ do
 -- | O(1). Split off all labels before the current label.
 cutBefore :: PrimMonad m => Label (PrimState m) -> m ()
 cutBefore this = st $ do
+  when (isNil this) $ throw NullPointerException
   p <- get prev this
   unless (isNil p) $ do
     set next p Nil
@@ -165,7 +169,9 @@ cutBefore this = st $ do
 
 -- | O(n). Retrieve the least label
 least :: PrimMonad m => Label (PrimState m) -> m (Label (PrimState m))
-least xs0 = st $ go xs0 where
+least xs0
+  | isNil xs0 = throw NullPointerException
+  | otherwise = st $ go xs0 where
   go :: Label s -> ST s (Label s)
   go this = get prev this >>= \p -> if
     | isNil p   -> return this
@@ -174,7 +180,9 @@ least xs0 = st $ go xs0 where
 
 -- | O(n). Retrieve the greatest label
 greatest :: PrimMonad m => Label (PrimState m) -> m (Label (PrimState m))
-greatest xs0 = st $ go xs0 where
+greatest xs0
+  | isNil xs0 = throw NullPointerException
+  | otherwise = st $ go xs0 where
   go :: Label s -> ST s (Label s)
   go this = get next this >>= \case
     Nil -> return this
@@ -183,9 +191,11 @@ greatest xs0 = st $ go xs0 where
 
 -- | O(1). Compare two labels for ordering.
 compareM :: PrimMonad m => Label (PrimState m) -> Label (PrimState m) -> m Ordering
-compareM i j = compare <$> getField key i <*> getField key j
+compareM i j
+  | isNil i || isNil j = throw NullPointerException
+  | otherwise = compare <$> getField key i <*> getField key j
 {-# INLINE compareM #-}
-  
+
 delta :: Key -> Word64 -> Key
 delta m j = fromIntegral $ max 1 $ quot (fromIntegral m) (j+1)
 {-# INLINE delta #-}
@@ -197,11 +207,11 @@ value this = getField key this
 
 -- | O(n). Get the keys of every label from here to the right.
 keys :: PrimMonad m => Label (PrimState m) -> m [Key]
-keys this = st $ if 
+keys this = st $ if
   | isNil this -> return []
   | otherwise -> do
     x <- getField key this
-    n <- get next this 
+    n <- get next this
     xs <- keys n
     return (x:xs)
 {-# INLINE keys #-}

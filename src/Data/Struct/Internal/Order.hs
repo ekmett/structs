@@ -20,6 +20,7 @@
 -----------------------------------------------------------------------------
 module Data.Struct.Internal.Order where
 
+import Control.Exception
 import Control.Monad
 import Control.Monad.Primitive
 import Control.Monad.ST
@@ -78,7 +79,9 @@ makeOrder mom a p n = st $ do
 
 -- | O(1) compareM, O(1) amortized insert
 compareM :: PrimMonad m => Order (PrimState m) -> Order (PrimState m) -> m Ordering
-compareM i j = st $ do
+compareM i j
+  | isNil i || isNil j = throw NullPointerException
+  | otherwise = st $ do
   ui <- get parent i
   uj <- get parent j
   Label.compareM ui uj >>= \case
@@ -88,6 +91,7 @@ compareM i j = st $ do
 
 insertAfter :: PrimMonad m => Order (PrimState m) -> m (Order (PrimState m))
 insertAfter n0 = st $ do
+  when (isNil n0) $ throw NullPointerException
   mom <- get parent n0
   k0 <- getField key n0
   n2 <- get next n0
@@ -115,13 +119,14 @@ insertAfter n0 = st $ do
       setField key this k
       set parent this dad
       n <- get next this
-      if | j > 0 -> rebalance mom dad n (k + deltaU) (j-1)
-         | otherwise -> do
-             stepdad <- Label.insertAfter dad
-             rebalance mom stepdad n deltaU logU
+      if j > 0 then rebalance mom dad n (k + deltaU) (j-1)
+      else do
+        stepdad <- Label.insertAfter dad
+        rebalance mom stepdad n deltaU logU
 
 delete :: PrimMonad m => Order (PrimState m) -> m ()
 delete this = st $ do
+  when (isNil this) $ throw NullPointerException
   mom <- get parent this
 
   p <- get prev this
@@ -130,23 +135,20 @@ delete this = st $ do
   set prev this Nil
   set next this Nil
 
-  x <- if
-    | isNil p -> return False
-    | otherwise -> do
-       set next p n
-       pmom <- get parent p
-       return (mom == pmom)
+  x <- if isNil p then return False
+  else do
+    set next p n
+    pmom <- get parent p
+    return (mom == pmom)
 
-  y <- if
-    | isNil n -> return False
-    | otherwise -> do
-       set prev n p
-       nmom <- get parent n
-       return (mom == nmom)
+  y <- if isNil n then return False
+  else do
+    set prev n p
+    nmom <- get parent n
+    return (mom == nmom)
 
   unless (x || y) $ Label.delete mom
 {-# INLINE delete #-}
-
 
 logU :: Int
 logU = 64
