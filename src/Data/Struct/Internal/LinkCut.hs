@@ -33,12 +33,13 @@ import Data.Struct.Internal
 -- >>> x <- new "x"
 -- >>> y <- new "y"
 -- >>> link x y -- now x is a child of y
+-- >>> x == y
+-- False
 -- >>> connected x y
 -- True
 -- >>> z <- new "z"
 -- >>> link z x -- now z is a child of y
--- >>> r <- root z
--- >>> r == y
+-- >>> (y ==) <$> root z
 -- True
 -- >>> cost z
 -- "yxz"
@@ -46,13 +47,30 @@ import Data.Struct.Internal
 -- >>> u <- new "u"
 -- >>> v <- new "v"
 -- >>> link u w
--- >>> link v x
+-- >>> link v z
 -- >>> link w z
 -- >>> cost u
 -- "yxzwu"
+-- >>> (y ==) <$> root v
+-- True
+-- >>> connected x v
+-- True
 -- >>> cut z
+--
+-- @
+--      y
+--     x          z    y
+--    z    ==>   w v  x
+--   w v        u
+--  u
+-- @
+--
+-- >>> connected x v
+-- False
 -- >>> cost u
 -- "zwu"
+-- >>> (z ==) <$> root v
+-- True
 newtype LinkCut a s = LinkCut (Object s)
 
 instance Struct (LinkCut a) where
