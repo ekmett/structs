@@ -12,8 +12,9 @@ bug-reports:   http://github.com/ekmett/structs/issues
 copyright:     Copyright (C) 2015 Edward A. Kmett
 build-type:    Custom
 tested-with:   GHC == 7.10.1
-synopsis:      Structs
-description:   Structs
+synopsis:      Strict GC'd imperative object-oriented programming with cheap pointers.
+description:
+  This project is an experiment with a small GC'd strict mutable imperative universe with cheap pointers inside of the GHC runtime system.
 
 extra-source-files:
   examples/Tree.hs

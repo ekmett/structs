@@ -1,3 +1,4 @@
+{-# LANGUAGE Trustworthy #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2015 Edward Kmett
@@ -8,11 +9,10 @@
 --
 -----------------------------------------------------------------------------
 module Data.Struct.Order
-  ( Order(..)
+  ( Order
   , newOrder
   , insertAfter
   , delete
   ) where
 
-import Data.Struct.Internal.Label (Key)
 import Data.Struct.Internal.Order

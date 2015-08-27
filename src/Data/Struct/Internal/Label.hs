@@ -1,3 +1,4 @@
+{-# LANGUAGE Unsafe #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RankNTypes #-}
@@ -5,9 +6,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE UnliftedFFITypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GHCForeignImportPrim #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2015 Edward Kmett

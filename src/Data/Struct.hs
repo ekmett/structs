@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE Unsafe #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2015 Edward Kmett

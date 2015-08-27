@@ -7,6 +7,9 @@ This package explores strict mutable data structures in Haskell.
 
 In particular, pointer-based data structures are effectively 'half price' due to the encoding used.
 
+However, the result is that if you use the `slot` and `field` system wrong, you can and will `SEGFAULT`.
+
+This means the `Internal` modules are very much internal.
 
 Contact Information
 -------------------

@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE Unsafe #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RankNTypes #-}
@@ -22,7 +23,6 @@
 -----------------------------------------------------------------------------
 
 module Data.Struct.Internal where
-
 
 import Control.Monad.Primitive
 import Control.Monad.ST

@@ -1,3 +1,4 @@
+{-# LANGUAGE Unsafe #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RankNTypes #-}
