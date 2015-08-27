@@ -84,9 +84,9 @@ makeLabel a p n = st $ do
 {-# INLINE makeLabel #-}
 
 -- | O(1). Create a new labeling structure. Labels from different list labeling structures are incomparable.
-newLabel :: PrimMonad m => m (Label (PrimState m))
-newLabel = makeLabel midBound Nil Nil
-{-# INLINE newLabel #-}
+new :: PrimMonad m => m (Label (PrimState m))
+new = makeLabel midBound Nil Nil
+{-# INLINE new #-}
 
 -- | O(1). Remove a label
 delete :: PrimMonad m => Label  (PrimState m) -> m ()

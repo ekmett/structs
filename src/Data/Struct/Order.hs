@@ -10,7 +10,7 @@
 -----------------------------------------------------------------------------
 module Data.Struct.Order
   ( Order
-  , newOrder
+  , new
   , insertAfter
   , delete
   ) where

@@ -25,9 +25,8 @@ import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Bits
 import Data.Struct.Internal
-import Data.Struct.Label (Label, newLabel)
+import Data.Struct.Internal.Label (Label, Key)
 import qualified Data.Struct.Label as Label
-import Data.Struct.Internal.Label (Key)
 import qualified Data.Struct.Internal.Label as Label (key)
 import Data.Word
 
@@ -158,11 +157,11 @@ loglogU = 6
 deltaU :: Key
 deltaU = unsafeShiftR maxBound loglogU -- U / log U
 
-newOrder :: PrimMonad m => m (Order (PrimState m))
-newOrder = st $ do
-  l <- newLabel
+new :: PrimMonad m => m (Order (PrimState m))
+new = st $ do
+  l <- Label.new
   makeOrder l (unsafeShiftR maxBound 1) Nil Nil
-{-# INLINE newOrder #-}
+{-# INLINE new #-}
 
 value :: PrimMonad m => Order (PrimState m) -> m (Key, Key)
 value this = st $ do

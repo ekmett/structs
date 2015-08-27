@@ -10,7 +10,7 @@
 -----------------------------------------------------------------------------
 module Data.Struct.Label
   ( Label
-  , newLabel
+  , new
   , insertAfter
   , delete
   , least
