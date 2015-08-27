@@ -34,10 +34,6 @@ flag test-hlint
   default: True
   manual: True
 
-flag opt
-  default: True
-  manual: True
-
 library
   build-depends:
     base >= 4.8 && < 5,
@@ -55,11 +51,7 @@ library
     Data.Struct.LinkCut
     Data.Struct.Order
 
-  ghc-options: -Wall -fwarn-tabs
-
-  if flag(opt)
-    ghc-options: -O2
-
+  ghc-options: -Wall -fwarn-monomorphism-restriction -fwarn-identities -fwarn-incomplete-record-updates -fwarn-incomplete-uni-patterns
   hs-source-dirs: src
   default-language: Haskell2010
 
@@ -74,9 +66,9 @@ test-suite doctests
     buildable: False
   else
     build-depends:
-      base >= 4.8,
-      directory      >= 1.0,
-      doctest        >= 0.9.1,
+      base,
+      directory >= 1.0,
+      doctest >= 0.9.1,
       filepath,
       parallel
 
