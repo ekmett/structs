@@ -16,6 +16,11 @@ import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Struct.Internal
 
+#ifdef HLINT
+{-# ANN module "HLint: ignore Reduce duplication" #-}
+{-# ANN module "HLint: ignore Redundant do" #-}
+#endif
+
 newtype LinkCut a s = LinkCut (Object s)
 
 instance Struct (LinkCut a) where

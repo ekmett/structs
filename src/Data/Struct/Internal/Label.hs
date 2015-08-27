@@ -25,6 +25,10 @@ import Data.Bits
 import Data.Struct.Internal
 import Data.Word
 
+#ifdef HLINT
+{-# ANN module "HLint: ignore Eta reduce" #-}
+#endif
+
 ------------------------------------------------------------------------------------
 -- * List Labeling: Maintain n keys each labeled with n^2 bits w/ log n update time.
 --
