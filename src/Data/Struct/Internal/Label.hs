@@ -115,7 +115,7 @@ insertAfter this = st $ do
   growRight !n0 !_ Nil !j = growLeft n0 j
   growRight n0 v0 nj j = do
     vj <- getField key nj
-    if fromIntegral (vj-v0) < j*j
+    if vj-v0 < j*j
     then do
       nj' <- get next nj
       growRight n0 v0 nj' (j+1)
@@ -132,7 +132,7 @@ insertAfter this = st $ do
       vp <- getField key p
       p' <- get prev p
       let !j' = j+1
-      if fromIntegral (maxBound - vp) < j'*j'
+      if maxBound - vp < j'*j'
       then growLeft p' j'
       else balance c vp (delta (maxBound-vp) j') j'
 
@@ -200,7 +200,7 @@ compareM i j
 {-# INLINE compareM #-}
 
 delta :: Key -> Word64 -> Key
-delta m j = fromIntegral $ max 1 $ quot (fromIntegral m) (j+1)
+delta m j = max 1 $ quot m (j+1)
 {-# INLINE delta #-}
 
 -- | O(1). Extract the current value assignment for this label. Any label mutation, even on other labels in this label structure, may change this answer.
