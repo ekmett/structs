@@ -190,6 +190,7 @@ summarize this
 access :: Monoid a => LinkCut a s -> ST s ()
 access this = do
   splay this
+  -- the right hand child is no longer preferred
   r <- get right this
   unless (isNil r) $ do
     set right this Nil
@@ -201,39 +202,27 @@ access this = do
     v <- getField value this
     setField summary this (sl `mappend` v)
   go this
+  splay this
  where
   go v = do
     w <- get path v
     unless (isNil w) $ do
       splay w
-      --      w    v            v
-      --     a b  c     ==>   w   , b.path = w
-      --                     a c
-      a <- get left w
+      --      w    v          w
+      --     a b  c d   ==>  a  v, b.path = w
+      --                       c d
       b <- get right w
-      c <- get left v
       unless (isNil b) $ do -- b is no longer on the preferred path
         set path b w
         set parent b Nil
-
-      set right w c
-      unless (isNil c) $ set parent c w
+      a <- get left w
       sa <- summarize a
       vw <- getField value w
-      sc <- summarize c
-      let sw = sa `mappend` vw `mappend` sc
-      setField summary w sw
-
-      set parent w v
-      set left v w
-      vv <- getField value v
-      setField summary v (sw `mappend` vv)
-
-      p <- get path w
-      set path v p
-      set path w Nil
-
-      go v
+      sv <- getField summary v
+      set parent v w
+      set right w v
+      setField summary w (sa `mappend` vw `mappend` sv)
+      go w
 
 -- | O(log n). Splay within an auxiliary tree
 splay :: Monoid a => LinkCut a s -> ST s ()
