@@ -41,6 +41,7 @@ import GHC.ST
 
 data NullPointerException = NullPointerException deriving (Show, Exception)
 
+-- | A 'Dict' reifies an instance of the constraint @p@ into a value.
 data Dict p where
   Dict :: p => Dict p
 
@@ -51,6 +52,8 @@ st (ST f) = primitive f
 
 {-# RULES "st/id" st = id #-}
 
+-- | An instance for 'Struct' @t@ is a witness to the machine-level
+--   equivalence of @t@ and @Object@.
 class Struct t where
   struct :: p t -> Dict (Coercible (t s) (Object s))
 
@@ -147,6 +150,7 @@ instance Precomposable Slot where
     (\x s -> case gxy x s of (# s', y #) -> gyz y s')
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 
+-- | The 'Slot' at the given position in a 'Struct'
 slot :: Int -> Slot s t
 slot (I# i) = Slot
   (\m s -> readSmallMutableArraySmallArray# m i s)
