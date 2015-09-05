@@ -136,7 +136,7 @@ readMutableByteArraySmallArray# m i s = unsafeCoerce# readSmallArray# m i s
 -- * Field Accessors
 --------------------------------------------------------------------------------
 
--- | A "Slot" is a reference to another unboxed mutable object.
+-- | A 'Slot' is a reference to another unboxed mutable object.
 data Slot x y = Slot
   (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, SmallMutableArray# s Any #))
   (forall s. SmallMutableArray# s Any -> SmallMutableArray# s Any -> State# s -> State# s)
@@ -167,7 +167,7 @@ set :: (PrimMonad m, Struct x, Struct y) => Slot x y -> x (PrimState m) -> y (Pr
 set (Slot _ go) x y = primitive_ (go (destruct x) (destruct y))
 {-# INLINE set #-}
 
--- | A "Field" is a reference from a struct to a normal Haskell data type.
+-- | A 'Field' is a reference from a struct to a normal Haskell data type.
 data Field x a = Field
   (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, a #))
   (forall s. SmallMutableArray# s Any -> a -> State# s -> State# s)
