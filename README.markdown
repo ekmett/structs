@@ -11,6 +11,9 @@ However, the result is that if you use the `slot` and `field` system wrong, you 
 
 This means the `Internal` modules are very much internal.
 
+Some documentation is available at
+[http://ekmett.github.io/structs/Data-Struct.html](http://ekmett.github.io/structs/Data-Struct.html).
+
 Contact Information
 -------------------
 
