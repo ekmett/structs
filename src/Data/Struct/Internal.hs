@@ -53,9 +53,10 @@ st (ST f) = primitive f
 {-# RULES "st/id" st = id #-}
 
 -- | An instance for 'Struct' @t@ is a witness to the machine-level
---   equivalence of @t@ and @Object@.
+--   equivalence of @t@ and @Object@.  The argument to 'struct' is
+--   ignored and is only present to help type inference.
 class Struct t where
-  struct :: p t -> Dict (Coercible (t s) (Object s))
+  struct :: proxy t -> Dict (Coercible (t s) (Object s))
 
 data Object s = Object { runObject :: SmallMutableArray# s Any }
 
