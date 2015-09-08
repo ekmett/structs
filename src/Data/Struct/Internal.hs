@@ -62,10 +62,12 @@ instance Struct Object where
 -- TODO: get these to dispatch fast through 'coerce' using struct as a witness
 
 destruct :: Struct t => t s -> SmallMutableArray# s Any
-destruct x = runObject (unsafeCoerce# x)
+destruct = unsafeCoerce# runObject
+{-# INLINE destruct #-}
 
 construct :: Struct t => SmallMutableArray# s Any -> t s
-construct x = unsafeCoerce# (Object x)
+construct = unsafeCoerce# Object
+{-# INLINE construct #-}
 
 unsafeCoerceStruct :: (Struct x, Struct y) => x s -> y s
 unsafeCoerceStruct x = unsafeCoerce# x
