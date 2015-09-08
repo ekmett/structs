@@ -41,6 +41,7 @@ import GHC.ST
 
 data NullPointerException = NullPointerException deriving (Show, Exception)
 
+-- | A 'Dict' reifies an instance of the constraint @p@ into a value.
 data Dict p where
   Dict :: p => Dict p
 
@@ -51,8 +52,11 @@ st (ST f) = primitive f
 
 {-# RULES "st/id" st = id #-}
 
+-- | An instance for 'Struct' @t@ is a witness to the machine-level
+--   equivalence of @t@ and @Object@.  The argument to 'struct' is
+--   ignored and is only present to help type inference.
 class Struct t where
-  struct :: p t -> Dict (Coercible (t s) (Object s))
+  struct :: proxy t -> Dict (Coercible (t s) (Object s))
 
 data Object s = Object { runObject :: SmallMutableArray# s Any }
 
@@ -135,7 +139,7 @@ readMutableByteArraySmallArray# m i s = unsafeCoerce# readSmallArray# m i s
 -- * Field Accessors
 --------------------------------------------------------------------------------
 
--- | A "Slot" is a reference to another unboxed mutable object.
+-- | A 'Slot' is a reference to another unboxed mutable object.
 data Slot x y = Slot
   (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, SmallMutableArray# s Any #))
   (forall s. SmallMutableArray# s Any -> SmallMutableArray# s Any -> State# s -> State# s)
@@ -149,6 +153,7 @@ instance Precomposable Slot where
     (\x s -> case gxy x s of (# s', y #) -> gyz y s')
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 
+-- | The 'Slot' at the given position in a 'Struct'
 slot :: Int -> Slot s t
 slot (I# i) = Slot
   (\m s -> readSmallMutableArraySmallArray# m i s)
@@ -165,7 +170,7 @@ set :: (PrimMonad m, Struct x, Struct y) => Slot x y -> x (PrimState m) -> y (Pr
 set (Slot _ go) x y = primitive_ (go (destruct x) (destruct y))
 {-# INLINE set #-}
 
--- | A "Field" is a reference from a struct to a normal Haskell data type.
+-- | A 'Field' is a reference from a struct to a normal Haskell data type.
 data Field x a = Field
   (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, a #))
   (forall s. SmallMutableArray# s Any -> a -> State# s -> State# s)
