@@ -4,8 +4,6 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -13,7 +11,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
@@ -116,7 +113,7 @@ isNil t = isTrue# (unsafeCoerce# reallyUnsafePtrEquality# (destruct t) Null)
 
 #ifndef HLINT
 -- | Truly imperative.
-pattern Nil :: forall t s. () => Struct t => t s
+pattern Nil :: () => Struct t => t s
 pattern Nil <- (isNil -> True) where
   Nil = unsafeCoerce# Box Null
 #endif
