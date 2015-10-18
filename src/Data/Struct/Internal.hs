@@ -35,6 +35,8 @@ import GHC.ST
 #ifdef HLINT
 {-# ANN module "HLint: ignore Eta reduce" #-}
 {-# ANN module "HLint: ignore Unused LANGUAGE pragma" #-}
+{-# ANN module "HLint: ignore Avoid lambda" #-}
+{-# ANN module "HLint: ignore Redundant lambda" #-}
 #endif
 
 data NullPointerException = NullPointerException deriving (Show, Exception)
@@ -111,6 +113,13 @@ alloc (I# n#) = primitive $ \s -> case newSmallArray# n# undefined s of (# s', b
 data Box = Box Null
 data Null = Null
 
+-- | Predicate to check if a struct is 'Nil'.
+--
+-- >>> isNil (Nil :: Object (PrimState IO))
+-- True
+-- >>> o <- alloc 1 :: IO (Object (PrimState IO))
+-- >>> isNil o
+-- False
 isNil :: Struct t => t s -> Bool
 isNil t = isTrue# (unsafeCoerce# reallyUnsafePtrEquality# (destruct t) Null)
 {-# INLINE isNil #-}
