@@ -42,8 +42,7 @@ newtype Order s = Order { runOrder :: Object s }
 
 instance Eq (Order s) where (==) = eqStruct
 
-instance Struct Order where
-  struct _ = Dict
+instance Struct Order
 
 key :: Field Order Key
 key = field 0

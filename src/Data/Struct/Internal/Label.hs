@@ -54,8 +54,7 @@ newtype Label s = Label (Object s)
 
 instance Eq (Label s) where (==) = eqStruct
 
-instance Struct Label where
-  struct _ = Dict
+instance Struct Label
 
 -- | Construct an explicit list labeling structure.
 --
