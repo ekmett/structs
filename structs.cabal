@@ -38,11 +38,13 @@ library
   build-depends:
     base >= 4.8 && < 5,
     deepseq,
+    template-haskell >= 2.10 && < 2.11,
     ghc-prim,
     primitive
 
   exposed-modules:
     Data.Struct
+    Data.Struct.TH
     Data.Struct.Internal
     Data.Struct.Internal.Label
     Data.Struct.Internal.LinkCut
