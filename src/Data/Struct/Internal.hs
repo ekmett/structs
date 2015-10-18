@@ -12,6 +12,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
@@ -53,26 +54,37 @@ st (ST f) = primitive f
 {-# RULES "st/id" st = id #-}
 
 -- | An instance for 'Struct' @t@ is a witness to the machine-level
---   equivalence of @t@ and @Object@.  The argument to 'struct' is
---   ignored and is only present to help type inference.
+--   equivalence of @t@ and @Object@.
 class Struct t where
-  struct :: proxy t -> Dict (Coercible (t s) (Object s))
+  struct :: Dict (Coercible (t s) (Object s))
+#ifndef HLINT
+  default struct :: Coercible (t s) (Object s) => Dict (Coercible (t s) (Object s))
+#endif
+  struct = Dict
+  {-# MINIMAL #-}
 
 data Object s = Object { runObject :: SmallMutableArray# s Any }
 
-instance Struct Object where
-  struct _ = Dict
+instance Struct Object
 
--- TODO: get these to dispatch fast through 'coerce' using struct as a witness
+coerceF :: Dict (Coercible a b) -> a -> b
+coerceF Dict = coerce
+{-# INLINE coerceF #-}
+
+coerceB :: Dict (Coercible a b) -> b -> a
+coerceB Dict = coerce
+{-# INLINE coerceB #-}
 
 destruct :: Struct t => t s -> SmallMutableArray# s Any
-destruct x = runObject (unsafeCoerce# x)
+destruct x = runObject (coerceF struct x)
+{-# INLINE destruct #-}
 
 construct :: Struct t => SmallMutableArray# s Any -> t s
-construct x = unsafeCoerce# (Object x)
+construct x = coerceB struct (Object x)
+{-# INLINE construct #-}
 
 unsafeCoerceStruct :: (Struct x, Struct y) => x s -> y s
-unsafeCoerceStruct x = unsafeCoerce# x
+unsafeCoerceStruct x = construct (destruct x)
 
 eqStruct :: Struct t => t s -> t s -> Bool
 eqStruct x y = isTrue# (destruct x `sameSmallMutableArray#` destruct y)
@@ -80,10 +92,6 @@ eqStruct x y = isTrue# (destruct x `sameSmallMutableArray#` destruct y)
 
 instance Eq (Object s) where
   (==) = eqStruct
-
--- instance Struct Object s where
---  construct = Object
---  destruct = runObject
 
 #ifndef HLINT
 pattern Struct :: () => Struct t => SmallMutableArray# s Any -> t s
