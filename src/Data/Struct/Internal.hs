@@ -73,11 +73,11 @@ coerceB Dict = coerce
 {-# INLINE coerceB #-}
 
 destruct :: Struct t => t s -> SmallMutableArray# s Any
-destruct x = runObject (coerceF struct x)
+destruct = \x -> runObject (coerceF struct x)
 {-# INLINE destruct #-}
 
 construct :: Struct t => SmallMutableArray# s Any -> t s
-construct x = coerceB struct (Object x)
+construct = \x -> coerceB struct (Object x)
 {-# INLINE construct #-}
 
 unsafeCoerceStruct :: (Struct x, Struct y) => x s -> y s
