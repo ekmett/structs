@@ -104,7 +104,11 @@ alloc (I# n#) = primitive $ \s -> case newSmallArray# n# undefined s of (# s', b
 -- * Tony Hoare's billion dollar mistake
 --------------------------------------------------------------------------------
 
-data Box = Box !Null
+-- | Box is designed to mirror object's single field but using the 'Null' type
+-- instead of a mutable array. This hack relies on GHC reusing the same 'Null'
+-- data constructor for all occurrences. Box's field must not be strict to
+-- prevent the compiler from making assumptions about its contents.
+data Box = Box Null
 data Null = Null
 
 isNil :: Struct t => t s -> Bool
