@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RoleAnnotations #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
@@ -17,6 +19,7 @@ import Control.Monad
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Struct.Internal
+import Data.Struct.TH
 
 #ifdef HLINT
 {-# ANN module "HLint: ignore Reduce duplication" #-}
@@ -73,34 +76,16 @@ import Data.Struct.Internal
 -- "zwu"
 -- >>> (z ==) <$> root v
 -- True
-newtype LinkCut a s = LinkCut (Object s)
-
-instance Struct (LinkCut a)
-
-instance Eq (LinkCut a s) where
-  (==) = eqStruct
-
-path, parent, left, right :: Slot (LinkCut a) (LinkCut a)
-path        = slot 0
-parent      = slot 1
-left        = slot 2
-right       = slot 3
-
-value, summary :: Field (LinkCut a) a
-value       = field 4
-summary     = field 5
+makeStruct [d|
+  data LinkCut a s = LinkCut
+    { path, parent, left, right :: !(LinkCut a s)
+    , value, summary :: a
+    }
+   |]
 
 -- | O(1). Allocate a new link-cut tree with a given monoidal summary.
 new :: (PrimMonad m, Monoid a) => a -> m (LinkCut a (PrimState m))
-new a = st $ do
-  this <- alloc 6
-  set path this Nil
-  set parent this Nil
-  set left this Nil
-  set right this Nil
-  setField value this a
-  setField summary this a
-  return this
+new a = st (newLinkCut Nil Nil Nil Nil a a)
 {-# INLINE new #-}
 
 -- | O(log n). @'cut' v@ removes the linkage between @v@ upwards to whatever tree it was in, making @v@ a root node.

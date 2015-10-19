@@ -4,8 +4,6 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -13,7 +11,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
@@ -38,6 +35,8 @@ import GHC.ST
 #ifdef HLINT
 {-# ANN module "HLint: ignore Eta reduce" #-}
 {-# ANN module "HLint: ignore Unused LANGUAGE pragma" #-}
+{-# ANN module "HLint: ignore Avoid lambda" #-}
+{-# ANN module "HLint: ignore Redundant lambda" #-}
 #endif
 
 data NullPointerException = NullPointerException deriving (Show, Exception)
@@ -76,11 +75,11 @@ coerceB Dict = coerce
 {-# INLINE coerceB #-}
 
 destruct :: Struct t => t s -> SmallMutableArray# s Any
-destruct x = runObject (coerceF struct x)
+destruct = \x -> runObject (coerceF struct x)
 {-# INLINE destruct #-}
 
 construct :: Struct t => SmallMutableArray# s Any -> t s
-construct x = coerceB struct (Object x)
+construct = \x -> coerceB struct (Object x)
 {-# INLINE construct #-}
 
 unsafeCoerceStruct :: (Struct x, Struct y) => x s -> y s
@@ -107,16 +106,27 @@ alloc (I# n#) = primitive $ \s -> case newSmallArray# n# undefined s of (# s', b
 -- * Tony Hoare's billion dollar mistake
 --------------------------------------------------------------------------------
 
-data Box = Box !Null
+-- | Box is designed to mirror object's single field but using the 'Null' type
+-- instead of a mutable array. This hack relies on GHC reusing the same 'Null'
+-- data constructor for all occurrences. Box's field must not be strict to
+-- prevent the compiler from making assumptions about its contents.
+data Box = Box Null
 data Null = Null
 
+-- | Predicate to check if a struct is 'Nil'.
+--
+-- >>> isNil (Nil :: Object (PrimState IO))
+-- True
+-- >>> o <- alloc 1 :: IO (Object (PrimState IO))
+-- >>> isNil o
+-- False
 isNil :: Struct t => t s -> Bool
 isNil t = isTrue# (unsafeCoerce# reallyUnsafePtrEquality# (destruct t) Null)
 {-# INLINE isNil #-}
 
 #ifndef HLINT
 -- | Truly imperative.
-pattern Nil :: forall t s. () => Struct t => t s
+pattern Nil :: () => Struct t => t s
 pattern Nil <- (isNil -> True) where
   Nil = unsafeCoerce# Box Null
 #endif
@@ -160,7 +170,7 @@ instance Precomposable Slot where
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 
 -- | The 'Slot' at the given position in a 'Struct'
-slot :: Int -> Slot s t
+slot :: Int {- ^ slot -} -> Slot s t
 slot (I# i) = Slot
   (\m s -> readSmallMutableArraySmallArray# m i s)
   (\m a s -> writeSmallMutableArraySmallArray# m i a s)
@@ -187,20 +197,36 @@ instance Precomposable Field where
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 
 -- | Store the reference to the Haskell data type in a normal field
-field :: Int -> Field s a
+field :: Int {- ^ slot -} -> Field s a
 field (I# i) = Field
   (\m s -> unsafeCoerce# readSmallArray# m i s)
   (\m a s -> unsafeCoerce# writeSmallArray# m i a s)
 {-# INLINE field #-}
 
--- | Store the reference in the nth slot of the nth argument, treated as a MutableByteArray
-unboxedField :: Prim a => Int -> Int -> Field s a
+-- | Store the reference in the nth slot in the nth argument, treated as a MutableByteArray
+unboxedField :: Prim a => Int {- ^ slot -} -> Int {- ^ argument -} -> Field s a
 unboxedField (I# i) (I# j) = Field
   (\m s -> case readMutableByteArraySmallArray# m i s of
      (# s', mba #) -> readByteArray# mba j s')
   (\m a s -> case readMutableByteArraySmallArray# m i s of
      (# s', mba #) -> writeByteArray# mba j a s')
 {-# INLINE unboxedField #-}
+
+-- | Initialized the mutable array used by 'unboxedField'. Returns the array
+-- after storing it in the struct to help with initialization.
+initializeUnboxedField ::
+  (PrimMonad m, Struct x) =>
+  Int             {- ^ slot     -} ->
+  Int             {- ^ elements -} ->
+  Int             {- ^ element size -} ->
+  x (PrimState m) {- ^ struct   -} ->
+  m (MutableByteArray (PrimState m))
+initializeUnboxedField (I# i) (I# n) (I# z) m =
+  primitive $ \s ->
+    case newByteArray# (n *# z) s of
+      (# s1, mba #) ->
+        (# writeMutableByteArraySmallArray# (destruct m) i mba s1, MutableByteArray mba #)
+{-# INLINE initializeUnboxedField #-}
 
 -- | Get the value of a field in a struct
 getField :: (PrimMonad m, Struct x) => Field x a -> x (PrimState m) -> m a
