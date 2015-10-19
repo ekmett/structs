@@ -5,6 +5,7 @@ module Data.Struct.TH (makeStruct) where
 
 import           Control.Monad (when, zipWithM)
 import           Control.Monad.Primitive (PrimMonad, PrimState)
+import           Data.Either (partitionEithers)
 import           Data.Primitive
 import           Data.Struct
 import           Data.Struct.Internal (Dict(Dict), initializeUnboxedField, st)
@@ -23,20 +24,18 @@ data StructRep = StructRep
   , srDerived     :: [Name]
   , srCxt         :: Cxt
   , srConstructor :: Name
-  , srMembers :: [Member]
+  , srMembers     :: [Member]
   } deriving Show
 
-data Member
-  = BoxedField Name Type
-  | UnboxedField Name Type
-  | Slot Name Type
+data Member = Member
+  { memberRep :: Representation
+  , memberName :: Name
+  , memberType :: Type
+  }
   deriving Show
 
-memberName :: Member -> Name
-memberName (BoxedField   n _) = n
-memberName (UnboxedField n _) = n
-memberName (Slot         n _) = n
-
+data Representation = BoxedField | UnboxedField | Slot
+  deriving Show
 
 -- | Generate allocators, slots, fields, unboxed fields, Eq instances,
 -- and Struct instances for the given "data types".
@@ -55,9 +54,9 @@ memberName (Slot         n _) = n
 makeStruct :: DecsQ -> DecsQ
 makeStruct dsq =
   do ds   <- dsq
-     reps <- traverse computeRep ds
-     ds's <- traverse generateCode reps
-     return (concat ds's)
+     (passthrough, reps) <- partitionEithers <$> traverse computeRep ds
+     ds's <- traverse (generateCode passthrough) reps
+     return (passthrough ++ concat ds's)
 
 mkAllocName :: StructRep -> Name
 mkAllocName rep = mkName ("alloc" ++ nameBase (srName rep))
@@ -69,13 +68,13 @@ mkInitName rep = mkName ("new" ++ nameBase (srName rep))
 -- Input validation
 ------------------------------------------------------------------------
 
-computeRep :: Dec -> Q StructRep
+computeRep :: Dec -> Q (Either Dec StructRep)
 computeRep (DataD c n vs cs ds) =
   do state <- validateStateType vs
      (conname, confields) <- validateContructor cs
      members <- traverse (validateMember state) confields
 
-     return StructRep
+     return $ Right StructRep
        { srState = state
        , srName  = n
        , srTyVars = vs
@@ -84,7 +83,7 @@ computeRep (DataD c n vs cs ds) =
        , srDerived = ds
        , srCxt = c
        }
-computeRep _ = fail "makeStruct expects a datatype declaration"
+computeRep d = return (Left d)
 
 -- | Check that only a single data constructor was provided and
 -- that it was a record constructor.
@@ -109,12 +108,12 @@ validateStateType xs =
 -- Fields. Slots will have types ending in the state type
 validateMember :: Name -> VarStrictType -> Q Member
 validateMember _ (fieldname,NotStrict,fieldtype) =
-  return (BoxedField fieldname fieldtype)
+  return (Member BoxedField fieldname fieldtype)
 validateMember s (fieldname,IsStrict,fieldtype) =
   do f <- unapplyType fieldtype s
-     return (Slot fieldname f)
+     return (Member Slot fieldname f)
 validateMember _ (fieldname,Unpacked,fieldtype) =
-  return (UnboxedField fieldname fieldtype)
+  return (Member UnboxedField fieldname fieldtype)
 
 unapplyType :: Type -> Name -> Q Type
 unapplyType (AppT f (VarT x)) y | x == y = return f
@@ -124,13 +123,14 @@ unapplyType _ _ = fail "Unable to match state type of slot"
 -- Code generation
 ------------------------------------------------------------------------
 
-generateCode :: StructRep -> DecsQ
-generateCode rep = concat <$> sequence
+generateCode :: [Dec] -> StructRep -> DecsQ
+generateCode ds rep = concat <$> sequence
   [ generateDataType rep
   , generateStructInstance rep
   , generateMembers rep
   , generateNew rep
   , generateAlloc rep
+  , generateRoles ds rep
   ]
 
 -- Generates: newtype TyCon a b c s = DataCon (Object s)
@@ -145,6 +145,24 @@ generateDataType rep = sequence
          ])
       (srDerived rep)
   ]
+
+generateRoles :: [Dec] -> StructRep -> DecsQ
+generateRoles ds rep
+  | hasRoleAnnotation = return []
+  | otherwise = sequence [ roleAnnotD (srName rep) (computeRoles rep) ]
+
+  where
+  hasRoleAnnotation = any isTargetRoleAnnot ds
+
+  isTargetRoleAnnot (RoleAnnotD n _) = n == srName rep
+  isTargetRoleAnnot _ = False
+
+-- Currently all roles are set to nominal. A more general solution
+-- should be able to infer some representional/phantom roles. To do
+-- this for arbitrary types we'll need a way to query the roles of
+-- existing type constructors to infer the correct roles.
+computeRoles :: StructRep -> [Role]
+computeRoles = map (const NominalR) . srTyVars
 
 -- | Type of the object not applied to a state type. This
 -- should have kind * -> *
@@ -214,10 +232,13 @@ generateNew rep =
 
 
 assignN :: ExpQ -> Int -> [(Name,Member)] -> ExpQ
-assignN this _ [(arg,BoxedField n _)] =
+
+assignN this _ [(arg,Member BoxedField n _)] =
   [| setField $(varE n) $this $(varE arg) |]
-assignN this _ [(arg,Slot       n _)] =
+
+assignN this _ [(arg,Member Slot n _)] =
   [| set      $(varE n) $this $(varE arg)|]
+
 assignN this i us =
   do let n = length us
      mba <- newName "mba"
@@ -237,15 +258,15 @@ newStructType rep =
          s = [t| PrimState $m |]
          obj = repType1 rep
 
-         memberType (BoxedField   _ t) = return t
-         memberType (UnboxedField _ t) = return t
-         memberType (Slot         _ f) = [t| $(return f) $s |]
+         buildType (Member BoxedField   _ t) = return t
+         buildType (Member UnboxedField _ t) = return t
+         buildType (Member Slot         _ f) = [t| $(return f) $s |]
 
          r = foldr (-->)
                [t| $m ($obj $s) |]
-               (memberType <$> srMembers rep)
+               (buildType <$> srMembers rep)
 
-         primPreds = primPred <$> nub [ t | UnboxedField _ (VarT t) <- srMembers rep ]
+         primPreds = primPred <$> nub [ t | Member UnboxedField _ (VarT t) <- srMembers rep ]
 
      forallRepT rep $ forallT [PlainTV mName] (cxt primPreds)
        [t| PrimMonad $m => $r |]
@@ -260,7 +281,7 @@ generateMembers rep
       (groupBy isNeighbor (srMembers rep))
 
 isNeighbor :: Member -> Member -> Bool
-isNeighbor (UnboxedField _ t) (UnboxedField _ u) = t == u
+isNeighbor (Member UnboxedField _ t) (Member UnboxedField _ u) = t == u
 isNeighbor _ _ = False
 
 ------------------------------------------------------------------------
@@ -268,13 +289,13 @@ isNeighbor _ _ = False
 generateMember1 :: StructRep -> Int -> [Member] -> DecsQ
 
 -- generates: fieldname = field <n>
-generateMember1 rep n [BoxedField fieldname fieldtype] =
+generateMember1 rep n [Member BoxedField fieldname fieldtype] =
   simpleDefinition rep fieldname
     [t| Field $(repType1 rep) $(return fieldtype) |]
     [| field n |]
 
 -- generates: slotname = slot <n>
-generateMember1 rep n [Slot slotname slottype] =
+generateMember1 rep n [Member Slot slotname slottype] =
   simpleDefinition rep slotname
     [t| Slot $(repType1 rep) $(return slottype) |]
     [| slot n |]
@@ -289,7 +310,7 @@ generateMember1 rep n us =
              [t| Field $(repType1 rep) $(return fieldtype) |])
           [| unboxedField n i |]
 
-    | (i,UnboxedField fieldname fieldtype) <- zip [0 :: Int ..] us
+    | (i,Member UnboxedField fieldname fieldtype) <- zip [0 :: Int ..] us
     ]
   where
   addPrimCxt (VarT t) = forallT [] (cxt [primPred t])
