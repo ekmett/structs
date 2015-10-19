@@ -170,7 +170,7 @@ instance Precomposable Slot where
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 
 -- | The 'Slot' at the given position in a 'Struct'
-slot :: Int -> Slot s t
+slot :: Int {- ^ slot -} -> Slot s t
 slot (I# i) = Slot
   (\m s -> readSmallMutableArraySmallArray# m i s)
   (\m a s -> writeSmallMutableArraySmallArray# m i a s)
@@ -197,20 +197,36 @@ instance Precomposable Field where
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 
 -- | Store the reference to the Haskell data type in a normal field
-field :: Int -> Field s a
+field :: Int {- ^ slot -} -> Field s a
 field (I# i) = Field
   (\m s -> unsafeCoerce# readSmallArray# m i s)
   (\m a s -> unsafeCoerce# writeSmallArray# m i a s)
 {-# INLINE field #-}
 
--- | Store the reference in the nth slot of the nth argument, treated as a MutableByteArray
-unboxedField :: Prim a => Int -> Int -> Field s a
+-- | Store the reference in the nth slot in the nth argument, treated as a MutableByteArray
+unboxedField :: Prim a => Int {- ^ slot -} -> Int {- ^ argument -} -> Field s a
 unboxedField (I# i) (I# j) = Field
   (\m s -> case readMutableByteArraySmallArray# m i s of
      (# s', mba #) -> readByteArray# mba j s')
   (\m a s -> case readMutableByteArraySmallArray# m i s of
      (# s', mba #) -> writeByteArray# mba j a s')
 {-# INLINE unboxedField #-}
+
+-- | Initialized the mutable array used by 'unboxedField'. Returns the array
+-- after storing it in the struct to help with initialization.
+initializeUnboxedField ::
+  (PrimMonad m, Struct x) =>
+  Int             {- ^ slot     -} ->
+  Int             {- ^ elements -} ->
+  Int             {- ^ element size -} ->
+  x (PrimState m) {- ^ struct   -} ->
+  m (MutableByteArray (PrimState m))
+initializeUnboxedField (I# i) (I# n) (I# z) m =
+  primitive $ \s ->
+    case newByteArray# (n *# z) s of
+      (# s1, mba #) ->
+        (# writeMutableByteArraySmallArray# (destruct m) i mba s1, MutableByteArray mba #)
+{-# INLINE initializeUnboxedField #-}
 
 -- | Get the value of a field in a struct
 getField :: (PrimMonad m, Struct x) => Field x a -> x (PrimState m) -> m a

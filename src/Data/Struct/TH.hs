@@ -5,8 +5,9 @@ module Data.Struct.TH (makeStruct) where
 
 import           Control.Monad (when, zipWithM)
 import           Control.Monad.Primitive (PrimMonad, PrimState)
+import           Data.Primitive
 import           Data.Struct
-import           Data.Struct.Internal (Dict(Dict))
+import           Data.Struct.Internal (Dict(Dict), initializeUnboxedField)
 import           Data.List (groupBy)
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax (VarStrictType)
@@ -35,10 +36,6 @@ memberName :: Member -> Name
 memberName (BoxedField   n _) = n
 memberName (UnboxedField n _) = n
 memberName (Slot         n _) = n
-
-isUnboxedField :: Member -> Bool
-isUnboxedField UnboxedField{} = True
-isUnboxedField _              = False
 
 
 -- | Generate allocators, slots, fields, unboxed fields, Eq instances,
@@ -183,44 +180,54 @@ generateAlloc rep =
        [ sigD allocName $ forallRepT rep $ forallT [PlainTV mName] (cxt [])
            [t| PrimMonad $m => $m ( $(repType1 rep) (PrimState $m) ) |]
        , simpleValD allocName [| alloc n |]
+       , pragInlD allocName Inline FunLike AllPhases
        ]
 
 
 -- generates:
 -- newDataCon a .. = do this <- alloc <n>; set field1 this a; ...; return this
 generateNew :: StructRep -> DecsQ
-generateNew rep | hasUnboxedFields rep = return []
 generateNew rep =
   do this <- newName "this"
-     args <- traverse (newName . nameBase . memberName) (srMembers rep)
+     let ms = groupBy isNeighbor (srMembers rep)
 
-     let count = length args
-         name = mkInitName rep
+         addName m = do n <- newName (nameBase (memberName m))
+                        return (n,m)
+
+     msWithArgs <- traverse (traverse addName) ms
+
+     let name = mkInitName rep
          body = doE
                 -- allocate struct
-              $ bindS (varP this) [| alloc count |]
+              $ bindS (varP this) (varE (mkAllocName rep))
 
                 -- initialize each member
-              : [ noBindS (initialize (varE this) (varE n) m)
-                | (n,m) <- zip args (srMembers rep) ]
+              : (noBindS <$> zipWith (assignN (varE this)) [0..] msWithArgs)
 
                 -- return initialized struct
              ++ [ noBindS [| return $(varE this) |] ]
 
      sequence
        [ sigD name (newStructType rep)
-       , funD name [ clause (varP <$> args) (normalB body) [] ]
+       , funD name [ clause (varP . fst <$> concat msWithArgs)
+                            (normalB body) [] ]
+       , pragInlD name Inline FunLike AllPhases
        ]
 
 
-hasUnboxedFields :: StructRep -> Bool
-hasUnboxedFields = any isUnboxedField . srMembers
+assignN :: ExpQ -> Int -> [(Name,Member)] -> ExpQ
+assignN this _ [(arg,BoxedField n _)] =
+  [| setField $(varE n) $this $(varE arg) |]
+assignN this _ [(arg,Slot       n _)] =
+  [| set      $(varE n) $this $(varE arg)|]
+assignN this i us@((_,UnboxedField _ t):_) =
+  do let n = length us
+     mba <- newName "mba"
+     doE $ bindS (varP mba) [| initializeUnboxedField i n (sizeOf (undefined :: $(return t))) $this |]
+         : [ noBindS [| writeByteArray $(varE mba) j $(varE arg) |]
+           | (j,(arg,_)) <- zip [0 :: Int ..] us ]
 
-
-initialize :: ExpQ -> ExpQ -> Member -> ExpQ
-initialize this arg (BoxedField n _) = [| setField $(varE n) $this $arg |]
-initialize this arg (Slot       n _) = [| set      $(varE n) $this $arg |]
-initialize _ _ _ = fail "Unboxed initializers not supported"
+assignN _ _ _ = fail "assignN: internal error"
 
 -- | The type of the struct initializer is complicated enough to
 -- pull it out here.
@@ -254,7 +261,8 @@ generateMembers rep
       (groupBy isNeighbor (srMembers rep))
 
 isNeighbor :: Member -> Member -> Bool
-isNeighbor a b = isUnboxedField a && isUnboxedField b
+isNeighbor (UnboxedField _ t) (UnboxedField _ u) = t == u
+isNeighbor _ _ = False
 
 ------------------------------------------------------------------------
 
