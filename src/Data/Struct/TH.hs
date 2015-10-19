@@ -7,7 +7,7 @@ import           Control.Monad (when, zipWithM)
 import           Control.Monad.Primitive (PrimMonad, PrimState)
 import           Data.Primitive
 import           Data.Struct
-import           Data.Struct.Internal (Dict(Dict), initializeUnboxedField)
+import           Data.Struct.Internal (Dict(Dict), initializeUnboxedField, st)
 import           Data.List (groupBy, nub)
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax (VarStrictType)
@@ -176,12 +176,11 @@ generateAlloc rep =
      let m = varT mName
          n = length (groupBy isNeighbor (srMembers rep))
          allocName = mkAllocName rep
-     sequence
-       [ sigD allocName $ forallRepT rep $ forallT [PlainTV mName] (cxt [])
-           [t| PrimMonad $m => $m ( $(repType1 rep) (PrimState $m) ) |]
-       , simpleValD allocName [| alloc n |]
-       , pragInlD allocName Inline FunLike AllPhases
-       ]
+
+     simpleDefinition rep allocName
+       (forallT [PlainTV mName] (cxt [])
+          [t| PrimMonad $m => $m ( $(repType1 rep) (PrimState $m) ) |])
+       [| alloc n |]
 
 
 -- generates:
@@ -210,8 +209,7 @@ generateNew rep =
      sequence
        [ sigD name (newStructType rep)
        , funD name [ clause (varP . fst <$> concat msWithArgs)
-                            (normalB body) [] ]
-       , pragInlD name Inline FunLike AllPhases
+                            (normalB [| st $body |] ) [] ]
        ]
 
 
@@ -247,9 +245,9 @@ newStructType rep =
                [t| $m ($obj $s) |]
                (memberType <$> srMembers rep)
 
-         primCxts = primCxt <$> nub [ t | UnboxedField _ (VarT t) <- srMembers rep ]
+         primPreds = primPred <$> nub [ t | UnboxedField _ (VarT t) <- srMembers rep ]
 
-     forallRepT rep $ forallT [PlainTV mName] (cxt primCxts)
+     forallRepT rep $ forallT [PlainTV mName] (cxt primPreds)
        [t| PrimMonad $m => $r |]
 
 -- generates a slot, field, or unboxedField definition per member
@@ -271,36 +269,41 @@ generateMember1 :: StructRep -> Int -> [Member] -> DecsQ
 
 -- generates: fieldname = field <n>
 generateMember1 rep n [BoxedField fieldname fieldtype] =
-  sequence
-    [ sigD fieldname $ forallRepT rep
-        [t| Field $(repType1 rep) $(return fieldtype) |]
-    , simpleValD fieldname [| field n |]
-    ]
+  simpleDefinition rep fieldname
+    [t| Field $(repType1 rep) $(return fieldtype) |]
+    [| field n |]
 
 -- generates: slotname = slot <n>
 generateMember1 rep n [Slot slotname slottype] =
-  sequence
-    [ sigD slotname $ forallRepT rep
-        [t| Slot $(repType1 rep) $(return slottype) |]
-    , simpleValD slotname [| slot n |]
-    ]
+  simpleDefinition rep slotname
+    [t| Slot $(repType1 rep) $(return slottype) |]
+    [| slot n |]
 
 -- It the first type patterns didn't hit then we expect a list
 -- of unboxed fields due to the call to groupBy in generateMembers
--- generates: fieldname = unboxedField <n>
-generateMember1 rep n us = sequence
-  [ d
-  | (i,UnboxedField fieldname fieldtype)
-       <- zip [0 :: Int ..] us
-  , d <- [ sigD fieldname $
-             forallRepT rep $ addPrimCxt fieldtype
-               [t| Field $(repType1 rep) $(return fieldtype) |]
-         , simpleValD fieldname [| unboxedField n i |]
-         ]
-  ]
+-- generates: fieldname = unboxedField <n> <i>
+generateMember1 rep n us =
+  concat <$> sequence
+    [ simpleDefinition rep fieldname
+          (addPrimCxt fieldtype
+             [t| Field $(repType1 rep) $(return fieldtype) |])
+          [| unboxedField n i |]
+
+    | (i,UnboxedField fieldname fieldtype) <- zip [0 :: Int ..] us
+    ]
   where
-  addPrimCxt (VarT t) = forallT [] (cxt [primCxt t])
+  addPrimCxt (VarT t) = forallT [] (cxt [primPred t])
   addPrimCxt _        = id
+
+-- Generate code for definitions without arguments, with type variables
+-- quantified over those in the struct rep, including an inline pragma
+simpleDefinition :: StructRep -> Name -> TypeQ -> ExpQ -> DecsQ
+simpleDefinition rep name typ def =
+  sequence
+    [ sigD name (forallRepT rep typ)
+    , simpleValD name def
+    , pragInlD name Inline FunLike AllPhases
+    ]
 
 ------------------------------------------------------------------------
 
@@ -316,5 +319,5 @@ forallRepT rep = forallT (init (srTyVars rep)) (cxt [])
 (-->) :: TypeQ -> TypeQ -> TypeQ
 f --> x = arrowT `appT` f `appT` x
 
-primCxt :: Name -> PredQ
-primCxt t = [t| Prim $(varT t) |]
+primPred :: Name -> PredQ
+primPred t = [t| Prim $(varT t) |]
