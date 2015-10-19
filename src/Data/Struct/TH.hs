@@ -28,9 +28,9 @@ data StructRep = StructRep
   } deriving Show
 
 data Member = Member
-  { memberRep :: Representation
+  { _memberRep :: Representation
   , memberName :: Name
-  , memberType :: Type
+  , _memberType :: Type
   }
   deriving Show
 
