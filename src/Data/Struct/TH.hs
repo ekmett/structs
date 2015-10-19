@@ -8,7 +8,7 @@ import           Control.Monad.Primitive (PrimMonad, PrimState)
 import           Data.Primitive
 import           Data.Struct
 import           Data.Struct.Internal (Dict(Dict), initializeUnboxedField)
-import           Data.List (groupBy)
+import           Data.List (groupBy, nub)
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax (VarStrictType)
 
@@ -220,14 +220,13 @@ assignN this _ [(arg,BoxedField n _)] =
   [| setField $(varE n) $this $(varE arg) |]
 assignN this _ [(arg,Slot       n _)] =
   [| set      $(varE n) $this $(varE arg)|]
-assignN this i us@((_,UnboxedField _ t):_) =
+assignN this i us =
   do let n = length us
      mba <- newName "mba"
-     doE $ bindS (varP mba) [| initializeUnboxedField i n (sizeOf (undefined :: $(return t))) $this |]
+     let arg0 = fst (head us)
+     doE $ bindS (varP mba) [| initializeUnboxedField i n (sizeOf $(varE arg0)) $this |]
          : [ noBindS [| writeByteArray $(varE mba) j $(varE arg) |]
            | (j,(arg,_)) <- zip [0 :: Int ..] us ]
-
-assignN _ _ _ = fail "assignN: internal error"
 
 -- | The type of the struct initializer is complicated enough to
 -- pull it out here.
@@ -248,7 +247,9 @@ newStructType rep =
                [t| $m ($obj $s) |]
                (memberType <$> srMembers rep)
 
-     forallT [PlainTV mName] (cxt []) $ forallRepT rep
+         primCxts = primCxt <$> nub [ t | UnboxedField _ (VarT t) <- srMembers rep ]
+
+     forallRepT rep $ forallT [PlainTV mName] (cxt primCxts)
        [t| PrimMonad $m => $r |]
 
 -- generates a slot, field, or unboxedField definition per member
@@ -292,11 +293,14 @@ generateMember1 rep n us = sequence
   | (i,UnboxedField fieldname fieldtype)
        <- zip [0 :: Int ..] us
   , d <- [ sigD fieldname $
-             forallRepT rep
+             forallRepT rep $ addPrimCxt fieldtype
                [t| Field $(repType1 rep) $(return fieldtype) |]
          , simpleValD fieldname [| unboxedField n i |]
          ]
   ]
+  where
+  addPrimCxt (VarT t) = forallT [] (cxt [primCxt t])
+  addPrimCxt _        = id
 
 ------------------------------------------------------------------------
 
@@ -311,3 +315,6 @@ forallRepT rep = forallT (init (srTyVars rep)) (cxt [])
 
 (-->) :: TypeQ -> TypeQ -> TypeQ
 f --> x = arrowT `appT` f `appT` x
+
+primCxt :: Name -> PredQ
+primCxt t = [t| Prim $(varT t) |]
