@@ -12,6 +12,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
@@ -41,6 +42,7 @@ import GHC.ST
 
 data NullPointerException = NullPointerException deriving (Show, Exception)
 
+-- | A 'Dict' reifies an instance of the constraint @p@ into a value.
 data Dict p where
   Dict :: p => Dict p
 
@@ -51,26 +53,38 @@ st (ST f) = primitive f
 
 {-# RULES "st/id" st = id #-}
 
+-- | An instance for 'Struct' @t@ is a witness to the machine-level
+--   equivalence of @t@ and @Object@.
 class Struct t where
-  struct :: p t -> Dict (Coercible (t s) (Object s))
+  struct :: Dict (Coercible (t s) (Object s))
+#ifndef HLINT
+  default struct :: Coercible (t s) (Object s) => Dict (Coercible (t s) (Object s))
+#endif
+  struct = Dict
+  {-# MINIMAL #-}
 
 data Object s = Object { runObject :: SmallMutableArray# s Any }
 
-instance Struct Object where
-  struct _ = Dict
+instance Struct Object
 
--- TODO: get these to dispatch fast through 'coerce' using struct as a witness
+coerceF :: Dict (Coercible a b) -> a -> b
+coerceF Dict = coerce
+{-# INLINE coerceF #-}
+
+coerceB :: Dict (Coercible a b) -> b -> a
+coerceB Dict = coerce
+{-# INLINE coerceB #-}
 
 destruct :: Struct t => t s -> SmallMutableArray# s Any
-destruct = unsafeCoerce# runObject
+destruct x = runObject (coerceF struct x)
 {-# INLINE destruct #-}
 
 construct :: Struct t => SmallMutableArray# s Any -> t s
-construct = unsafeCoerce# Object
+construct x = coerceB struct (Object x)
 {-# INLINE construct #-}
 
 unsafeCoerceStruct :: (Struct x, Struct y) => x s -> y s
-unsafeCoerceStruct x = unsafeCoerce# x
+unsafeCoerceStruct x = construct (destruct x)
 
 eqStruct :: Struct t => t s -> t s -> Bool
 eqStruct x y = isTrue# (destruct x `sameSmallMutableArray#` destruct y)
@@ -78,10 +92,6 @@ eqStruct x y = isTrue# (destruct x `sameSmallMutableArray#` destruct y)
 
 instance Eq (Object s) where
   (==) = eqStruct
-
--- instance Struct Object s where
---  construct = Object
---  destruct = runObject
 
 #ifndef HLINT
 pattern Struct :: () => Struct t => SmallMutableArray# s Any -> t s
@@ -135,7 +145,7 @@ readMutableByteArraySmallArray# m i s = unsafeCoerce# readSmallArray# m i s
 -- * Field Accessors
 --------------------------------------------------------------------------------
 
--- | A "Slot" is a reference to another unboxed mutable object.
+-- | A 'Slot' is a reference to another unboxed mutable object.
 data Slot x y = Slot
   (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, SmallMutableArray# s Any #))
   (forall s. SmallMutableArray# s Any -> SmallMutableArray# s Any -> State# s -> State# s)
@@ -149,6 +159,7 @@ instance Precomposable Slot where
     (\x s -> case gxy x s of (# s', y #) -> gyz y s')
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 
+-- | The 'Slot' at the given position in a 'Struct'
 slot :: Int -> Slot s t
 slot (I# i) = Slot
   (\m s -> readSmallMutableArraySmallArray# m i s)
@@ -165,7 +176,7 @@ set :: (PrimMonad m, Struct x, Struct y) => Slot x y -> x (PrimState m) -> y (Pr
 set (Slot _ go) x y = primitive_ (go (destruct x) (destruct y))
 {-# INLINE set #-}
 
--- | A "Field" is a reference from a struct to a normal Haskell data type.
+-- | A 'Field' is a reference from a struct to a normal Haskell data type.
 data Field x a = Field
   (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, a #))
   (forall s. SmallMutableArray# s Any -> a -> State# s -> State# s)

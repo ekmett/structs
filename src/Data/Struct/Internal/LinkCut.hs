@@ -75,8 +75,7 @@ import Data.Struct.Internal
 -- True
 newtype LinkCut a s = LinkCut (Object s)
 
-instance Struct (LinkCut a) where
-  struct _ = Dict
+instance Struct (LinkCut a)
 
 instance Eq (LinkCut a s) where
   (==) = eqStruct
