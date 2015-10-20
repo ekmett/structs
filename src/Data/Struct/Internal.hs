@@ -83,7 +83,7 @@ unsafeCoerceStruct :: (Struct x, Struct y) => x s -> y s
 unsafeCoerceStruct x = construct (destruct x)
 
 eqStruct :: Struct t => t s -> t s -> Bool
-eqStruct x y = isTrue# (destruct x `sameSmallMutableArray#` destruct y)
+eqStruct = \x y -> isTrue# (destruct x `sameSmallMutableArray#` destruct y)
 {-# INLINE eqStruct #-}
 
 instance Eq (Object s) where
