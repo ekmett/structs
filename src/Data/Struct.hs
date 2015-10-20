@@ -28,7 +28,7 @@ module Data.Struct
   , get, set
   , Field, field
   , unboxedField
-  , getField, setField
+  , getField, setField, modifyField, modifyField'
   , Precomposable(..)
   ) where
 

@@ -236,3 +236,16 @@ getField (Field go _) = \x -> primitive (go (destruct x))
 setField :: (PrimMonad m, Struct x) => Field x a -> x (PrimState m) -> a -> m ()
 setField (Field _ go) = \x y -> primitive_ (go (destruct x) y)
 {-# INLINE setField #-}
+
+
+--------------------------------------------------------------------------------
+-- * Modifiers
+--------------------------------------------------------------------------------
+
+modifyField :: (Struct x, PrimMonad m) => Field x a -> x (PrimState m) -> (a -> a) -> m ()
+modifyField s = \o f -> st (setField s o . f =<< getField s o)
+{-# INLINE modifyField #-}
+
+modifyField' :: (Struct x, PrimMonad m) => Field x a -> x (PrimState m) -> (a -> a) -> m ()
+modifyField' s = \o f -> st (setField s o . f =<< (return $!) =<< getField s o)
+{-# INLINE modifyField' #-}
