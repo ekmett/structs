@@ -247,5 +247,5 @@ modifyField s = \o f -> st (setField s o . f =<< getField s o)
 {-# INLINE modifyField #-}
 
 modifyField' :: (Struct x, PrimMonad m) => Field x a -> x (PrimState m) -> (a -> a) -> m ()
-modifyField' s = \o f -> st (setField s o . f =<< (return $!) =<< getField s o)
+modifyField' s = \o f -> st (setField s o =<< (\x -> return $! f x) =<< getField s o)
 {-# INLINE modifyField' #-}
