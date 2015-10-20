@@ -107,13 +107,19 @@ validateStateType xs =
 -- | Figure out which record fields are Slots and which are
 -- Fields. Slots will have types ending in the state type
 validateMember :: Name -> VarStrictType -> Q Member
-validateMember _ (fieldname,NotStrict,fieldtype) =
-  return (Member BoxedField fieldname fieldtype)
+validateMember s (fieldname,NotStrict,fieldtype) =
+  do when (occurs s fieldtype)
+       (fail ("state type may not occur in field `" ++ nameBase fieldname ++ "`"))
+     return (Member BoxedField fieldname fieldtype)
 validateMember s (fieldname,IsStrict,fieldtype) =
   do f <- unapplyType fieldtype s
+     when (occurs s f)
+       (fail ("state type may only occur in final position in slot `" ++ nameBase fieldname ++ "`"))
      return (Member Slot fieldname f)
-validateMember _ (fieldname,Unpacked,fieldtype) =
-  return (Member UnboxedField fieldname fieldtype)
+validateMember s (fieldname,Unpacked,fieldtype) =
+  do when (occurs s fieldtype)
+       (fail ("state type may not occur in unpacked field `" ++ nameBase fieldname ++ "`"))
+     return (Member UnboxedField fieldname fieldtype)
 
 unapplyType :: Type -> Name -> Q Type
 unapplyType (AppT f (VarT x)) y | x == y = return f
@@ -342,3 +348,13 @@ f --> x = arrowT `appT` f `appT` x
 
 primPred :: Name -> PredQ
 primPred t = [t| Prim $(varT t) |]
+
+occurs :: Name -> Type -> Bool
+occurs n (AppT f x) = occurs n f || occurs n x
+occurs n (VarT m) = n == m
+occurs n (ForallT _ _ t) = occurs n t -- all names are fresh in quoted code, see below
+occurs n (SigT t _) = occurs n t
+occurs _ _ = False
+
+-- Prelude Language.Haskell.TH> runQ (stringE . show =<< [t| forall a. a -> (forall a. a) |])
+-- LitE (StringL "ForallT [PlainTV a_0] [] (AppT (AppT ArrowT (VarT a_0)) (ForallT [PlainTV a_1] [] (VarT a_1)))")
