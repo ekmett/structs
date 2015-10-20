@@ -30,7 +30,6 @@ import Control.Monad.ST
 import Data.Primitive
 import Data.Coerce
 import GHC.Exts
-import GHC.ST
 
 #ifdef HLINT
 {-# ANN module "HLint: ignore Eta reduce" #-}
@@ -47,10 +46,8 @@ data Dict p where
 
 -- | Run an ST calculation inside of a PrimMonad. This lets us avoid dispatching everything through the 'PrimMonad' dictionary.
 st :: PrimMonad m => ST (PrimState m) a -> m a
-st (ST f) = primitive f
+st = primToPrim
 {-# INLINE[0] st #-}
-
-{-# RULES "st/id" st = id #-}
 
 -- | An instance for 'Struct' @t@ is a witness to the machine-level
 --   equivalence of @t@ and @Object@.
