@@ -176,14 +176,16 @@ slot (I# i) = Slot
   (\m a s -> writeSmallMutableArraySmallArray# m i a s)
 
 -- | Get the value from a 'Slot'
-get :: (PrimMonad m, Struct x, Struct y) => Slot x y -> x (PrimState m) -> m (y (PrimState m))
-get (Slot go _) x = primitive $ \s -> case go (destruct x) s of
-   (# s', y #) -> (# s', construct y #)
+get ::
+  (PrimMonad m, Struct x, Struct y) =>
+  Slot x y -> x (PrimState m) -> m (y (PrimState m))
+get (Slot go _) = \x -> primitive $ \s -> case go (destruct x) s of
+                                            (# s', y #) -> (# s', construct y #)
 {-# INLINE get #-}
 
 -- | Set the value of a 'Slot'
 set :: (PrimMonad m, Struct x, Struct y) => Slot x y -> x (PrimState m) -> y (PrimState m) -> m ()
-set (Slot _ go) x y = primitive_ (go (destruct x) (destruct y))
+set (Slot _ go) = \x y -> primitive_ (go (destruct x) (destruct y))
 {-# INLINE set #-}
 
 -- | A 'Field' is a reference from a struct to a normal Haskell data type.
@@ -230,10 +232,10 @@ initializeUnboxedField (I# i) (I# n) (I# z) m =
 
 -- | Get the value of a field in a struct
 getField :: (PrimMonad m, Struct x) => Field x a -> x (PrimState m) -> m a
-getField (Field go _) x = primitive (go (destruct x))
+getField (Field go _) = \x -> primitive (go (destruct x))
 {-# INLINE getField #-}
 
 -- | Set the value of a field in a struct
 setField :: (PrimMonad m, Struct x) => Field x a -> x (PrimState m) -> a -> m ()
-setField (Field _ go) x y = primitive_ (go (destruct x) y)
+setField (Field _ go) = \x y -> primitive_ (go (destruct x) y)
 {-# INLINE setField #-}
