@@ -11,6 +11,7 @@
 module Data.Struct.Order
   ( Order
   , new
+  , value
   , insertAfter
   , delete
   ) where

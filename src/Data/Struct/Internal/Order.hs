@@ -38,40 +38,45 @@ import Data.Word
 --
 -- This means that inserts are O(1) amortized, while comparisons remain O(1) worst-case.
 
-newtype Order s = Order { runOrder :: Object s }
+newtype Order a s = Order { runOrder :: Object s }
 
-instance Eq (Order s) where (==) = eqStruct
+instance Eq (Order a s) where (==) = eqStruct
 
-instance Struct Order
+instance Struct (Order a)
 
-key :: Field Order Key
+key :: Field (Order a) Key
 key = field 0
 {-# INLINE key #-}
 
-next :: Slot Order Order
-next = slot 1
+value :: Field (Order a) a
+value = field 1
+{-# INLINE value #-}
+
+next :: Slot (Order a) (Order a)
+next = slot 2
 {-# INLINE next #-}
 
-prev :: Slot Order Order
-prev = slot 2
+prev :: Slot (Order a) (Order a)
+prev = slot 3
 {-# INLINE prev #-}
 
-parent :: Slot Order Label
-parent = slot 3
+parent :: Slot (Order a) Label 
+parent = slot 4
 {-# INLINE parent #-}
 
-makeOrder :: PrimMonad m => Label (PrimState m) -> Key -> Order (PrimState m) -> Order (PrimState m) -> m (Order (PrimState m))
-makeOrder mom a p n = st $ do
-  this <- alloc 4
+makeOrder :: PrimMonad m => Label (PrimState m) -> Key -> a -> Order a (PrimState m) -> Order a (PrimState m) -> m (Order a (PrimState m))
+makeOrder mom a v p n = st $ do
+  this <- alloc 5
   set parent this mom
   setField key this a
+  setField value this v
   set prev this p
   set next this n
   return this
 {-# INLINE makeOrder #-}
 
 -- | O(1) compareM, O(1) amortized insert
-compareM :: PrimMonad m => Order (PrimState m) -> Order (PrimState m) -> m Ordering
+compareM :: PrimMonad m => Order a (PrimState m) -> Order a (PrimState m) -> m Ordering
 compareM i j
   | isNil i || isNil j = throw NullPointerException
   | otherwise = st $ do
@@ -83,22 +88,22 @@ compareM i j
     x -> return x
 {-# INLINE compareM #-}
 
-insertAfter :: PrimMonad m => Order (PrimState m) -> m (Order (PrimState m))
-insertAfter n0 = st $ do
+insertAfter :: PrimMonad m => Order a (PrimState m) -> a -> m (Order a (PrimState m))
+insertAfter n0 a1 = st $ do
   when (isNil n0) $ throw NullPointerException
   mom <- get parent n0
   k0 <- getField key n0
   n2 <- get next n0
   k2 <- if isNil n2 then return maxBound else getField key n2
   let !k1 = k0 + unsafeShiftR (k2 - k0) 1
-  n1 <- makeOrder mom k1 n0 n2
+  n1 <- makeOrder mom k1 a1 n0 n2
   unless (isNil n2) $ set prev n2 n1
   set next n0 n1
   when (k0 + 1 == k2) $ rewind mom n0 -- we have a collision, rebalance
   return n1
  where
   -- find the smallest sibling
-  rewind :: Label s -> Order s -> ST s ()
+  rewind :: Label s -> Order a s -> ST s ()
   rewind mom this = do
     p <- get prev this
     if isNil p then rebalance mom mom this 0 64
@@ -108,7 +113,7 @@ insertAfter n0 = st $ do
       else rebalance mom mom p 0 64
 
   -- break up the family
-  rebalance :: Label s -> Label s -> Order s -> Word64 -> Int -> ST s ()
+  rebalance :: Label s -> Label s -> Order a s -> Word64 -> Int -> ST s ()
   rebalance mom dad this k j = unless (isNil this) $ do
     guardian <- get parent this
     when (mom == guardian) $ do
@@ -120,7 +125,7 @@ insertAfter n0 = st $ do
         stepdad <- Label.insertAfter dad
         rebalance mom stepdad n deltaU logU
 
-delete :: PrimMonad m => Order (PrimState m) -> m ()
+delete :: PrimMonad m => Order a (PrimState m) -> m ()
 delete this = st $ do
   when (isNil this) $ throw NullPointerException
   mom <- get parent this
@@ -155,25 +160,14 @@ loglogU = 6
 deltaU :: Key
 deltaU = unsafeShiftR maxBound loglogU -- U / log U
 
-new :: PrimMonad m => m (Order (PrimState m))
-new = st $ do
+new :: PrimMonad m => a -> m (Order a (PrimState m))
+new a = st $ do
   l <- Label.new
-  makeOrder l (unsafeShiftR maxBound 1) Nil Nil
+  makeOrder l (unsafeShiftR maxBound 1) a Nil Nil
 {-# INLINE new #-}
 
-value :: PrimMonad m => Order (PrimState m) -> m (Key, Key)
-value this = st $ do
+keys :: PrimMonad m => Order a (PrimState m) -> m (Key, Key)
+keys this = st $ do
   mom <- get parent this
   (,) <$> getField Label.key mom <*> getField key this
-{-# INLINE value #-}
-
--- O(n) sweep to the right from the current node, showing all values for debugging
-values :: PrimMonad m => Order (PrimState m) -> m [(Key, Key)]
-values xs0 = st (go xs0) where
-  go :: Order s -> ST s [(Key, Key)]
-  go this
-    | isNil this = return []
-    | otherwise  = do
-        n <- get next this
-        (:) <$> value this <*> go n
-{-# INLINE values #-}
+{-# INLINE keys #-}
