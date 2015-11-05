@@ -14,6 +14,19 @@ This means the `Internal` modules are very much internal.
 Some documentation is available at
 [http://ekmett.github.io/structs/Data-Struct.html](http://ekmett.github.io/structs/Data-Struct.html).
 
+Building with stack
+-------------------
+
+If `stack` is your toolchain of choice, be aware that the `testsuite` depends
+upon the `cabal_macros.h` file. The easiest way to make it available for CPP
+inclusion is to use a symlink, example:
+
+```
+ln -s .stack-work/dist/x86_64-osx/Cabal-1.22.4.0 dist
+```
+
+Then you can `stack test` as you would normally do.
+
 Contact Information
 -------------------
 
