@@ -21,7 +21,7 @@ data StructRep = StructRep
   { srState       :: Name
   , srName        :: Name
   , srTyVars      :: [TyVarBndr]
-  , srDerived     :: [Name]
+  , srDerived     :: Cxt
   , srCxt         :: Cxt
   , srConstructor :: Name
   , srMembers     :: [Member]
@@ -69,7 +69,7 @@ mkInitName rep = mkName ("new" ++ nameBase (srName rep))
 ------------------------------------------------------------------------
 
 computeRep :: Dec -> Q (Either Dec StructRep)
-computeRep (DataD c n vs cs ds) =
+computeRep (DataD c n vs _ cs ds) =
   do state <- validateStateType vs
      (conname, confields) <- validateContructor cs
      members <- traverse (validateMember state) confields
@@ -107,19 +107,20 @@ validateStateType xs =
 -- | Figure out which record fields are Slots and which are
 -- Fields. Slots will have types ending in the state type
 validateMember :: Name -> VarStrictType -> Q Member
-validateMember s (fieldname,NotStrict,fieldtype) =
+validateMember s (fieldname,Bang NoSourceUnpackedness NoSourceStrictness,fieldtype) =
   do when (occurs s fieldtype)
        (fail ("state type may not occur in field `" ++ nameBase fieldname ++ "`"))
      return (Member BoxedField fieldname fieldtype)
-validateMember s (fieldname,IsStrict,fieldtype) =
+validateMember s (fieldname,Bang NoSourceUnpackedness SourceStrict,fieldtype) =
   do f <- unapplyType fieldtype s
      when (occurs s f)
        (fail ("state type may only occur in final position in slot `" ++ nameBase fieldname ++ "`"))
      return (Member Slot fieldname f)
-validateMember s (fieldname,Unpacked,fieldtype) =
+validateMember s (fieldname,Bang SourceUnpack SourceStrict,fieldtype) =
   do when (occurs s fieldtype)
        (fail ("state type may not occur in unpacked field `" ++ nameBase fieldname ++ "`"))
      return (Member UnboxedField fieldname fieldtype)
+validateMember _ _ = fail "validateMember: can't unpack nonstrict fields"
 
 unapplyType :: Type -> Name -> Q Type
 unapplyType (AppT f (VarT x)) y | x == y = return f
@@ -143,13 +144,14 @@ generateCode ds rep = concat <$> sequence
 generateDataType :: StructRep -> DecsQ
 generateDataType rep = sequence
   [ newtypeD (return (srCxt rep)) (srName rep) (srTyVars rep)
+      Nothing
       (normalC
          (srConstructor rep)
-         [ strictType
-             notStrict
+         [ bangType
+             (bang noSourceUnpackedness noSourceStrictness)
              [t| Object $(varT (srState rep)) |]
          ])
-      (srDerived rep)
+      (return (srDerived rep))
   ]
 
 generateRoles :: [Dec] -> StructRep -> DecsQ

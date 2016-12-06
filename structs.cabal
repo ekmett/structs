@@ -36,9 +36,9 @@ flag test-hlint
 
 library
   build-depends:
-    base >= 4.8 && < 5,
+    base >= 4.9 && < 5,
     deepseq,
-    template-haskell >= 2.10 && < 2.11,
+    template-haskell >= 2.11 && < 2.12,
     ghc-prim,
     primitive
 

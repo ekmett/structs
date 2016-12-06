@@ -90,7 +90,7 @@ instance Eq (Object s) where
   (==) = eqStruct
 
 #ifndef HLINT
-pattern Struct :: () => Struct t => SmallMutableArray# s Any -> t s
+pattern Struct :: Struct t => () => SmallMutableArray# s Any -> t s
 pattern Struct x <- (destruct -> x) where
   Struct x = construct x
 #endif
@@ -123,7 +123,7 @@ isNil t = isTrue# (unsafeCoerce# reallyUnsafePtrEquality# (destruct t) Null)
 
 #ifndef HLINT
 -- | Truly imperative.
-pattern Nil :: () => Struct t => t s
+pattern Nil :: Struct t => () => t s
 pattern Nil <- (isNil -> True) where
   Nil = unsafeCoerce# Box Null
 #endif

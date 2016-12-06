@@ -84,7 +84,7 @@ makeStruct [d|
    |]
 
 -- | O(1). Allocate a new link-cut tree with a given monoidal summary.
-new :: (PrimMonad m, Monoid a) => a -> m (LinkCut a (PrimState m))
+new :: PrimMonad m => a -> m (LinkCut a (PrimState m))
 new a = st (newLinkCut Nil Nil Nil Nil a a)
 {-# INLINE new #-}
 
