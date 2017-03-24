@@ -2,9 +2,10 @@
 {-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_GHC -fno-warn-monomorphism-restriction #-}
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (C) 2015 Edward Kmett
+-- Copyright   :  (C) 2015-2017 Edward Kmett
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  experimental

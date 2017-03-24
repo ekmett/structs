@@ -14,7 +14,7 @@
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (C) 2015 Edward Kmett
+-- Copyright   :  (C) 2015-2017 Edward Kmett
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  experimental
@@ -148,6 +148,10 @@ readMutableByteArraySmallArray# :: SmallMutableArray# s Any -> Int# -> State# s 
 readMutableByteArraySmallArray# m i s = unsafeCoerce# readSmallArray# m i s
 {-# INLINE readMutableByteArraySmallArray# #-}
 
+casSmallMutableArraySmallArray# :: SmallMutableArray# s Any -> Int# -> SmallMutableArray# s Any -> SmallMutableArray# s Any -> State# s -> (# State# s, Int#, SmallMutableArray# s Any #)
+casSmallMutableArraySmallArray# m i o n s = unsafeCoerce# casSmallArray# m i o n s
+{-# INLINE casSmallMutableArraySmallArray# #-}
+
 --------------------------------------------------------------------------------
 -- * Field Accessors
 --------------------------------------------------------------------------------
@@ -156,42 +160,48 @@ readMutableByteArraySmallArray# m i s = unsafeCoerce# readSmallArray# m i s
 data Slot x y = Slot
   (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, SmallMutableArray# s Any #))
   (forall s. SmallMutableArray# s Any -> SmallMutableArray# s Any -> State# s -> State# s)
+  (forall s. SmallMutableArray# s Any -> SmallMutableArray# s Any -> SmallMutableArray# s Any -> State# s -> (# State# s, Int#, SmallMutableArray# s Any #))
 
 -- | We can compose slots to get a nested slot or field accessor
 class Precomposable t where
   ( # ) :: Slot x y -> t y z -> t x z
 
 instance Precomposable Slot where
-  Slot gxy _ # Slot gyz syz = Slot
+  Slot gxy _ _ # Slot gyz syz cyz = Slot
     (\x s -> case gxy x s of (# s', y #) -> gyz y s')
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
+    (\x o n s -> case gxy x s of (# s', y #) -> cyz y o n s')
 
 -- | The 'Slot' at the given position in a 'Struct'
 slot :: Int {- ^ slot -} -> Slot s t
 slot (I# i) = Slot
   (\m s -> readSmallMutableArraySmallArray# m i s)
   (\m a s -> writeSmallMutableArraySmallArray# m i a s)
+  (\m o n s -> casSmallMutableArraySmallArray# m i o n s)
 
 -- | Get the value from a 'Slot'
-get ::
-  (PrimMonad m, Struct x, Struct y) =>
-  Slot x y -> x (PrimState m) -> m (y (PrimState m))
-get (Slot go _) = \x -> primitive $ \s -> case go (destruct x) s of
+get :: (PrimMonad m, Struct x, Struct y) => Slot x y -> x (PrimState m) -> m (y (PrimState m))
+get (Slot go _ _) = \x -> primitive $ \s -> case go (destruct x) s of
                                             (# s', y #) -> (# s', construct y #)
 {-# INLINE get #-}
 
 -- | Set the value of a 'Slot'
 set :: (PrimMonad m, Struct x, Struct y) => Slot x y -> x (PrimState m) -> y (PrimState m) -> m ()
-set (Slot _ go) = \x y -> primitive_ (go (destruct x) (destruct y))
+set (Slot _ go _) = \x y -> primitive_ (go (destruct x) (destruct y))
 {-# INLINE set #-}
+
+-- | Compare-and-swap the value of the slot. Takes the expected old value, the new value and returns if it succeeded and the value found.
+cas :: (PrimMonad m, Struct x, Struct y) => Slot x y -> x (PrimState m) -> y (PrimState m) -> y (PrimState m) -> m (Bool, y (PrimState m))
+cas (Slot _ _ go) = \m o n -> primitive $ \s -> case go (destruct m) (destruct o) (destruct n) s of
+  (# s', i, r #) -> (# s', (tagToEnum# i :: Bool, construct r) #)
 
 -- | A 'Field' is a reference from a struct to a normal Haskell data type.
 data Field x a = Field
-  (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, a #))
-  (forall s. SmallMutableArray# s Any -> a -> State# s -> State# s)
+  (forall s. SmallMutableArray# s Any -> State# s -> (# State# s, a #)) -- get
+  (forall s. SmallMutableArray# s Any -> a -> State# s -> State# s) -- set
 
 instance Precomposable Field where
-  Slot gxy _ # Field gyz syz = Field
+  Slot gxy _ _ # Field gyz syz = Field
     (\x s -> case gxy x s of (# s', y #) -> gyz y s')
     (\x z s -> case gxy x s of (# s', y #) -> syz y z s')
 

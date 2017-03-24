@@ -1,6 +1,6 @@
 name:          structs
 category:      Data
-version:       0
+version:       0.1
 license:       BSD3
 cabal-version: >= 1.22
 license-file:  LICENSE
@@ -9,9 +9,9 @@ maintainer:    Edward A. Kmett <ekmett@gmail.com>
 stability:     provisional
 homepage:      http://github.com/ekmett/structs/
 bug-reports:   http://github.com/ekmett/structs/issues
-copyright:     Copyright (C) 2015 Edward A. Kmett
+copyright:     Copyright (C) 2015-2017 Edward A. Kmett
 build-type:    Custom
-tested-with:   GHC == 7.10.1, GHC == 7.10.2
+tested-with:   GHC == 8.0.1
 synopsis:      Strict GC'd imperative object-oriented programming with cheap pointers.
 description:
   This project is an experiment with a small GC'd strict mutable imperative universe with cheap pointers inside of the GHC runtime system.
