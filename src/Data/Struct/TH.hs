@@ -21,7 +21,11 @@ data StructRep = StructRep
   { srState       :: Name
   , srName        :: Name
   , srTyVars      :: [TyVarBndr]
+#if MIN_VERSION_template_haskell(2,12,0)
+  , srDerived     :: [DerivClause]
+#else
   , srDerived     :: Cxt
+#endif
   , srCxt         :: Cxt
   , srConstructor :: Name
   , srMembers     :: [Member]
@@ -151,7 +155,11 @@ generateDataType rep = sequence
              (bang noSourceUnpackedness noSourceStrictness)
              [t| Object $(varT (srState rep)) |]
          ])
+#if MIN_VERSION_template_haskell(2,12,0)
+      (map return (srDerived rep))
+#else
       (return (srDerived rep))
+#endif
   ]
 
 generateRoles :: [Dec] -> StructRep -> DecsQ
