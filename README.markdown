@@ -1,9 +1,9 @@
 structs
 ==========
 
-[![Build Status](https://secure.travis-ci.org/ekmett/structs.png?branch=master)](http://travis-ci.org/ekmett/structs)
+[![Hackage](https://img.shields.io/hackage/v/structs.svg)](https://hackage.haskell.org/package/structs) [![Build Status](https://secure.travis-ci.org/ekmett/structs.png?branch=master)](http://travis-ci.org/ekmett/structs)
 
-This package explores strict mutable data structures in Haskell. 
+This package explores strict mutable data structures in Haskell.
 
 In particular, pointer-based data structures are effectively 'half price' due to the encoding used.
 
