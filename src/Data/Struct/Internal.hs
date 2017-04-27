@@ -31,6 +31,9 @@ import Data.Primitive
 import Data.Coerce
 import GHC.Exts
 
+-- $setup
+-- >>> import Control.Monad.Primitive
+
 #ifdef HLINT
 {-# ANN module "HLint: ignore Eta reduce" #-}
 {-# ANN module "HLint: ignore Unused LANGUAGE pragma" #-}

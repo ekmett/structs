@@ -22,6 +22,9 @@ import Control.Monad.ST
 import Data.Struct.Internal
 import Data.Struct.TH
 
+-- $setup
+-- >>> import Data.Struct.Internal.LinkCut
+
 #ifdef HLINT
 {-# ANN module "HLint: ignore Reduce duplication" #-}
 {-# ANN module "HLint: ignore Redundant do" #-}
