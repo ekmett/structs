@@ -20,6 +20,6 @@ import Test.DocTest
 main :: IO ()
 main = do
     traverse_ putStrLn args
-    doctest $ "-fobject-code" : args
+    doctest args
   where
     args = flags ++ pkgs ++ module_sources
