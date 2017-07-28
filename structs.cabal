@@ -82,7 +82,8 @@ test-suite doctests
       directory >= 1.0,
       doctest >= 0.9.1,
       filepath,
-      parallel
+      parallel,
+      structs
 
 test-suite hlint
   type: exitcode-stdio-1.0

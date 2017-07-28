@@ -1,3 +1,6 @@
+## next
+* Add a library dependency in the `doctests` test suite
+
 ## 0.1
 * Add compare-and-swap support for struct slots
 * Add `Data.Struct.TH`, which provides Template Haskell support for
