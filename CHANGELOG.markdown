@@ -1,4 +1,4 @@
-## next
+## 0.1.1
 * Add a library dependency in the `doctests` test suite
 
 ## 0.1
