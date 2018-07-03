@@ -11,7 +11,10 @@ homepage:      http://github.com/ekmett/structs/
 bug-reports:   http://github.com/ekmett/structs/issues
 copyright:     Copyright (C) 2015-2017 Edward A. Kmett
 build-type:    Custom
-tested-with:   GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.3
+tested-with:   GHC == 8.0.2
+             , GHC == 8.2.2
+             , GHC == 8.4.3
+             , GHC == 8.6.1
 synopsis:      Strict GC'd imperative object-oriented programming with cheap pointers.
 description:
   This project is an experiment with a small GC'd strict mutable imperative universe with cheap pointers inside of the GHC runtime system.
@@ -46,7 +49,7 @@ library
   build-depends:
     base >= 4.9 && < 5,
     deepseq,
-    template-haskell >= 2.11 && < 2.14,
+    template-haskell >= 2.11 && < 2.15,
     ghc-prim,
     primitive
 
