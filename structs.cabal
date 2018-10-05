@@ -108,6 +108,7 @@ test-suite unit
   hs-source-dirs: tests
   default-language: Haskell2010
   build-depends:
+    structs,
     base,
     QuickCheck,
     tasty,
