@@ -113,4 +113,5 @@ test-suite unit
     QuickCheck,
     tasty,
     tasty-quickcheck,
-    tasty-hunit
+    tasty-hunit,
+    primitive
