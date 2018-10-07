@@ -18,6 +18,7 @@ import Data.Struct.Internal
 import Data.Struct.TH
 
 
+-- Simple use of makeStruct
 makeStruct [d|
   data TupleInts a s  = TupleInts
     { tupleLeft, tupleRight :: a
@@ -34,11 +35,10 @@ getTupleLeft :: PrimMonad m => TupleInts a (PrimState m) -> m a
 getTupleLeft tup = getField tupleLeft tup
 
 
-
 -- Questions on API:
--- Why can't val :: !a?
--- How to create "NULL" LinkedList ? Empty linked list
 -- How does Nil work
+
+-- makeStruct of a data type with pointers.
 
 makeStruct [d|
   data LinkedList a s  = LinkedList
@@ -101,6 +101,12 @@ concatLinkedList xs ys =
            then set next xs ys
            else get next xs >>= \xs' -> concatLinkedList xs' ys
 
+
+-- datatype with UNPACKED
+makeStruct [d| data Vec3 s  = Vec3 { x, y, z :: {-# UNPACK #-} !Int  } |]
+
+-- Test bench
+-- ==========
 main = defaultMain tests
 
 tests :: TestTree
