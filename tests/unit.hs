@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC
+import Test.QuickCheck.Modifiers (NonEmptyList (..))
 import Test.Tasty.HUnit
 
 import Data.List
@@ -37,22 +38,23 @@ getTupleLeft tup = getField tupleLeft tup
 -- Questions on API:
 -- Why can't val :: !a?
 -- How to create "NULL" LinkedList ? Empty linked list
+-- How does Nil work
 
 makeStruct [d|
   data LinkedList a s  = LinkedList
-    { val :: (Maybe a),
+    { val :: a,
        next :: !(LinkedList a s) }
     |]
 
 -- Make an empty linked list
-mkEmptyLinkedList :: PrimMonad m => m (LinkedList a (PrimState m))
-mkEmptyLinkedList = newLinkedList Nothing Nil
-
+mkEmptyLinkedList ::  LinkedList a s
+mkEmptyLinkedList = Nil 
 
 -- Make a linked list node with a value
 mkLinkedListNode :: PrimMonad m => a -> m (LinkedList a (PrimState m))
-mkLinkedListNode a = newLinkedList (Just a) Nil
+mkLinkedListNode a = newLinkedList a Nil
 
+-- Append a node to a linked list.
 appendLinkedList :: PrimMonad m => 
   LinkedList x (PrimState m) 
   -> x 
@@ -68,12 +70,14 @@ appendLinkedList xs x = do
         xs' <- get next xs
         appendLinkedList xs' x
 
-nthLinkedList :: PrimMonad m => Int -> LinkedList a (PrimState m) -> m (Maybe a)
+-- Retreive the nth value from the linked list.
+nthLinkedList :: PrimMonad m => Int -> LinkedList a (PrimState m) -> m a
 nthLinkedList 0 xs = getField val xs
 nthLinkedList i xs = get next xs >>= nthLinkedList (i - 1)
 
+-- Convert a haskell list to a linked list
 listToLinkedList :: PrimMonad m => [a] -> m (LinkedList a (PrimState m))
-listToLinkedList [] = mkEmptyLinkedList 
+listToLinkedList [] = return mkEmptyLinkedList 
 listToLinkedList (x:xs) = do
   head <- mkLinkedListNode x
   rest <- listToLinkedList xs
@@ -81,6 +85,21 @@ listToLinkedList (x:xs) = do
 
   return head
 
+
+-- TODO: setup ViewPatterns  to check when something is nil
+-- concat xs ys ==  xs := xs ++ ys
+concatLinkedList :: PrimMonad m => 
+      LinkedList a (PrimState m) 
+  -> LinkedList a (PrimState m) 
+  -> m ()
+concatLinkedList xs ys =
+  if isNil xs 
+     then error "head of list is undefined"
+     else do 
+       isend <- isNil <$> (get next xs)
+       if isend 
+           then set next xs ys
+           else get next xs >>= \xs' -> concatLinkedList xs' ys
 
 main = defaultMain tests
 
@@ -90,12 +109,35 @@ tests = testGroup "Tests" [properties, unitTests]
 properties :: TestTree
 properties = testGroup "Properties" [qcProps]
 
+
+-- Return if a list equal to some linked list representation
+listEqLinkedList :: PrimMonad m => Eq a => [a] -> LinkedList a (PrimState m) -> m Bool
+listEqLinkedList [] l = return $ isNil l
+listEqLinkedList (x:xs) l = do
+  xval <- getField val l
+  if xval == x
+     then do
+       l' <- get next l
+       listEqLinkedList xs l'
+    else return False
+
+
 qcProps = testGroup "(checked by QuickCheck)"
   [ QC.testProperty @ ([Int] -> Bool) "list to linked list" $ 
     \xs -> runST $ do
       lxs <- listToLinkedList xs
-      vals <- sequenceA [nthLinkedList i lxs | i <- [0..length xs - 1]]
-      return $ all (uncurry (==)) (zip (map Just xs) vals)
+      listEqLinkedList xs lxs
+
+
+  , QC.testProperty @ (NonEmptyList Int -> [Int] -> Bool) "Appending linked lists" $ 
+    \xs ys -> runST $ do
+      lxs <- listToLinkedList (getNonEmpty xs)
+      lys <- listToLinkedList ys
+      
+      -- this mutates lxs
+      concatLinkedList lxs lys
+
+      listEqLinkedList ((getNonEmpty xs) ++ ys) lxs
   ]
 
 
@@ -113,10 +155,10 @@ unitTests = testGroup "Unit tests"
   , testCase "make a linked list, and check the head has the correct value" $ runST $ do
       head <- mkLinkedListNode 10
       v <- (nthLinkedList 0 head)
-      return $ v @?= Just 10
+      return $ v @?= 10
   , testCase "join two linked lists, check that this works" $ runST $ do
       head <- mkLinkedListNode 10
       v <- (nthLinkedList 0 head)
-      return $ v @?= Just 10
+      return $ v @?= 10
 
   ]
