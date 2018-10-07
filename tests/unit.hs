@@ -150,6 +150,15 @@ qcProps = testGroup "(checked by QuickCheck)"
   ]
 
 
+
+-- Try out the `Precomposable` system
+nextnext :: Slot (LinkedList a) (LinkedList a)
+nextnext = next # next
+
+nextnextval :: Field (LinkedList a) a
+nextnextval = nextnext # val
+
+
 unitTests = testGroup "Unit tests"
   [ testCase "create and get value from tuple" $ 
       runST $ do
@@ -161,4 +170,9 @@ unitTests = testGroup "Unit tests"
         setTupleLeft c 30
         val <- getTupleLeft c
         return (val @?= 30)
+  , testCase "pull the values out of a linked list using nextnextval" $ runST $ do
+      xs <- listToLinkedList [1, 2, 3]
+      nnv <- getField nextnextval xs
+      return (nnv @?= 3)
+
   ]
