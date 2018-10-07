@@ -32,13 +32,8 @@ makeStruct [d|
 -- Create a new tuple of ints
 mkTupleInts a b = st (newTupleInts a b)
 
--- Does not work, Slot is things like left, right
--- setTupleLeft tup val = set tupleLeft tup val
-
-
 setTupleLeft :: PrimMonad m => TupleInts a (PrimState m) -> a -> m ()
 setTupleLeft tup val = setField tupleLeft tup val
-
 
 getTupleLeft :: PrimMonad m => TupleInts a (PrimState m) -> m a
 getTupleLeft tup = getField tupleLeft tup
@@ -62,12 +57,15 @@ qcProps = testGroup "(checked by QuickCheck)"
 
 
 unitTests = testGroup "Unit tests"
-  [ testCase "List comparison (different length)" $
-      [1, 2, 3] `compare` [1,2] @?= GT
-  , testCase "create and get value from tuple" $ 
+  [ testCase "create and get value from tuple" $ 
       runST $ do
         c <- mkTupleInts 10 20
         val <- getTupleLeft  c
         return (val @?= 10)
+  , testCase "set and get value from tuple" $ runST $ do
+        c <- mkTupleInts 10 20
+        setTupleLeft c 30
+        val <- getTupleLeft c
+        return (val @?= 30)
 
   ]
