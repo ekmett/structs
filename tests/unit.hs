@@ -110,7 +110,7 @@ properties :: TestTree
 properties = testGroup "Properties" [qcProps]
 
 
--- Return if a list equal to some linked list representation
+-- Return if a list equal to some linked list representation.
 listEqLinkedList :: PrimMonad m => Eq a => [a] -> LinkedList a (PrimState m) -> m Bool
 listEqLinkedList [] l = return $ isNil l
 listEqLinkedList (x:xs) l = do
@@ -128,6 +128,15 @@ qcProps = testGroup "(checked by QuickCheck)"
       lxs <- listToLinkedList xs
       listEqLinkedList xs lxs
 
+  , QC.testProperty @ (NonEmptyList Int -> Bool) "Indexing linked lists" $ 
+    \xs -> runST $ do
+        lxs <- listToLinkedList (getNonEmpty xs)
+
+        -- TODO: missing Foldable instance for NonEmptyList
+        xsAtIx <- sequenceA [nthLinkedList ix lxs | ix <- [0.. length (getNonEmpty xs) - 1]]
+        return $ xsAtIx  == getNonEmpty xs
+
+        -- return $ getNonEmpty lxs == xsAtIx
 
   , QC.testProperty @ (NonEmptyList Int -> [Int] -> Bool) "Appending linked lists" $ 
     \xs ys -> runST $ do
@@ -152,13 +161,4 @@ unitTests = testGroup "Unit tests"
         setTupleLeft c 30
         val <- getTupleLeft c
         return (val @?= 30)
-  , testCase "make a linked list, and check the head has the correct value" $ runST $ do
-      head <- mkLinkedListNode 10
-      v <- (nthLinkedList 0 head)
-      return $ v @?= 10
-  , testCase "join two linked lists, check that this works" $ runST $ do
-      head <- mkLinkedListNode 10
-      v <- (nthLinkedList 0 head)
-      return $ v @?= 10
-
   ]
