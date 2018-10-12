@@ -128,7 +128,7 @@ validateMember _ _ = fail "validateMember: can't unpack nonstrict fields"
 
 unapplyType :: Type -> Name -> Q Type
 unapplyType (AppT f (VarT x)) y | x == y = return f
-unapplyType t n = do
+unapplyType t n =
   fail $ "Unable to match state type of slot: " ++ show t ++ " | expected: " ++ nameBase n
 
 ------------------------------------------------------------------------
