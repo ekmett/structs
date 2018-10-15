@@ -13,7 +13,7 @@ copyright:     Copyright (C) 2015-2017 Edward A. Kmett
 build-type:    Custom
 tested-with:   GHC == 8.0.2
              , GHC == 8.2.2
-             , GHC == 8.4.3
+             , GHC == 8.4.4
              , GHC == 8.6.1
 synopsis:      Strict GC'd imperative object-oriented programming with cheap pointers.
 description:
@@ -87,20 +87,6 @@ test-suite doctests
       filepath,
       parallel,
       structs
-
-test-suite hlint
-  type: exitcode-stdio-1.0
-  main-is: hlint.hs
-  ghc-options: -w -threaded -rtsopts -with-rtsopts=-N
-  hs-source-dirs: tests
-  default-language: Haskell2010
-
-  if !flag(test-hlint)
-    buildable: False
-  else
-    build-depends:
-      base,
-      hlint >= 1.7
 
 test-suite unit
   type: exitcode-stdio-1.0
