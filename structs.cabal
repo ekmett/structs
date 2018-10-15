@@ -40,11 +40,6 @@ flag test-doctests
   default: True
   manual: True
 
--- You can disable the doctests test suite with -f-test-doctests
-flag test-hlint
-  default: True
-  manual: True
-
 library
   build-depends:
     base >= 4.9 && < 5,
