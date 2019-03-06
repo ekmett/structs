@@ -14,7 +14,7 @@ build-type:    Custom
 tested-with:   GHC == 8.0.2
              , GHC == 8.2.2
              , GHC == 8.4.4
-             , GHC == 8.6.3
+             , GHC == 8.6.4
 synopsis:      Strict GC'd imperative object-oriented programming with cheap pointers.
 description:
   This project is an experiment with a small GC'd strict mutable imperative universe with cheap pointers inside of the GHC runtime system.
