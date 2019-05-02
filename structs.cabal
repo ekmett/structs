@@ -45,7 +45,7 @@ library
   build-depends:
     base >= 4.9 && < 5,
     deepseq,
-    template-haskell >= 2.11 && < 2.15,
+    template-haskell >= 2.11 && < 2.16,
     ghc-prim,
     primitive
 
