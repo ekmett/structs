@@ -1,3 +1,6 @@
+## 0.1.2 [2019.05.02]
+* Add a unit test suite.
+
 ## 0.1.1
 * Add a library dependency in the `doctests` test suite
 
