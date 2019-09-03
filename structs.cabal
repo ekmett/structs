@@ -21,8 +21,8 @@ description:
   This project is an experiment with a small GC'd strict mutable imperative universe with cheap pointers inside of the GHC runtime system.
 
 extra-source-files:
+  .hlint.yaml
   CHANGELOG.markdown
-  HLint.hs
   README.markdown
   Warning.hs
 
