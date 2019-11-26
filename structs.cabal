@@ -16,6 +16,7 @@ tested-with:   GHC == 8.0.2
              , GHC == 8.4.4
              , GHC == 8.6.5
              , GHC == 8.8.1
+             , GHC == 8.10.1
 synopsis:      Strict GC'd imperative object-oriented programming with cheap pointers.
 description:
   This project is an experiment with a small GC'd strict mutable imperative universe with cheap pointers inside of the GHC runtime system.
@@ -45,7 +46,7 @@ library
   build-depends:
     base >= 4.9 && < 5,
     deepseq,
-    template-haskell >= 2.11 && < 2.16,
+    template-haskell >= 2.11 && < 2.17,
     ghc-prim,
     primitive
 
