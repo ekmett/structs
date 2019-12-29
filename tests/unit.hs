@@ -22,7 +22,7 @@ import Data.Struct.TH
 makeStruct [d|
   data TupleInts a s  = TupleInts
     { tupleLeft, tupleRight :: a
-    } 
+    }
     |]
 
 -- Create a new tuple of ints
@@ -48,16 +48,16 @@ makeStruct [d|
 
 -- Make an empty linked list
 mkEmptyLinkedList ::  LinkedList a s
-mkEmptyLinkedList = Nil 
+mkEmptyLinkedList = Nil
 
 -- Make a linked list node with a value
 mkLinkedListNode :: PrimMonad m => a -> m (LinkedList a (PrimState m))
 mkLinkedListNode a = newLinkedList a Nil
 
 -- Append a node to a linked list.
-appendLinkedList :: PrimMonad m => 
-  LinkedList x (PrimState m) 
-  -> x 
+appendLinkedList :: PrimMonad m =>
+  LinkedList x (PrimState m)
+  -> x
   -> m (LinkedList x (PrimState m))
 appendLinkedList xs x = do
   isend <- isNil <$> (get next xs)
@@ -77,7 +77,7 @@ nthLinkedList i xs = get next xs >>= nthLinkedList (i - 1)
 
 -- Convert a haskell list to a linked list
 listToLinkedList :: PrimMonad m => [a] -> m (LinkedList a (PrimState m))
-listToLinkedList [] = return mkEmptyLinkedList 
+listToLinkedList [] = return mkEmptyLinkedList
 listToLinkedList (x:xs) = do
   head <- mkLinkedListNode x
   rest <- listToLinkedList xs
@@ -88,16 +88,16 @@ listToLinkedList (x:xs) = do
 
 -- TODO: setup ViewPatterns  to check when something is nil
 -- concat xs ys ==  xs := xs ++ ys
-concatLinkedList :: PrimMonad m => 
-      LinkedList a (PrimState m) 
-  -> LinkedList a (PrimState m) 
+concatLinkedList :: PrimMonad m =>
+      LinkedList a (PrimState m)
+  -> LinkedList a (PrimState m)
   -> m ()
 concatLinkedList xs ys =
-  if isNil xs 
+  if isNil xs
      then error "head of list is undefined"
-     else do 
+     else do
        isend <- isNil <$> (get next xs)
-       if isend 
+       if isend
            then set next xs ys
            else get next xs >>= \xs' -> concatLinkedList xs' ys
 
@@ -129,12 +129,12 @@ listEqLinkedList (x:xs) l = do
 
 
 qcProps = testGroup "(checked by QuickCheck)"
-  [ QC.testProperty @ ([Int] -> Bool) "list to linked list" $ 
+  [ QC.testProperty @ ([Int] -> Bool) "list to linked list" $
     \xs -> runST $ do
       lxs <- listToLinkedList xs
       listEqLinkedList xs lxs
 
-  , QC.testProperty @ (NonEmptyList Int -> Bool) "Indexing linked lists" $ 
+  , QC.testProperty @ (NonEmptyList Int -> Bool) "Indexing linked lists" $
     \xs -> runST $ do
         lxs <- listToLinkedList (getNonEmpty xs)
 
@@ -144,11 +144,11 @@ qcProps = testGroup "(checked by QuickCheck)"
 
         -- return $ getNonEmpty lxs == xsAtIx
 
-  , QC.testProperty @ (NonEmptyList Int -> [Int] -> Bool) "Appending linked lists" $ 
+  , QC.testProperty @ (NonEmptyList Int -> [Int] -> Bool) "Appending linked lists" $
     \xs ys -> runST $ do
       lxs <- listToLinkedList (getNonEmpty xs)
       lys <- listToLinkedList ys
-      
+
       -- this mutates lxs
       concatLinkedList lxs lys
 
@@ -166,7 +166,7 @@ nextnextval = nextnext # val
 
 
 unitTests = testGroup "Unit tests"
-  [ testCase "create and get value from tuple" $ 
+  [ testCase "create and get value from tuple" $
       runST $ do
         c <- mkTupleInts 10 20
         val <- getTupleLeft  c

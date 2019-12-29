@@ -60,7 +60,7 @@ prev :: Slot (Order a) (Order a)
 prev = slot 3
 {-# INLINE prev #-}
 
-parent :: Slot (Order a) Label 
+parent :: Slot (Order a) Label
 parent = slot 4
 {-# INLINE parent #-}
 
