@@ -129,12 +129,12 @@ listEqLinkedList (x:xs) l = do
 
 
 qcProps = testGroup "(checked by QuickCheck)"
-  [ QC.testProperty @ ([Int] -> Bool) "list to linked list" $
+  [ QC.testProperty @([Int] -> Bool) "list to linked list" $
     \xs -> runST $ do
       lxs <- listToLinkedList xs
       listEqLinkedList xs lxs
 
-  , QC.testProperty @ (NonEmptyList Int -> Bool) "Indexing linked lists" $
+  , QC.testProperty @(NonEmptyList Int -> Bool) "Indexing linked lists" $
     \xs -> runST $ do
         lxs <- listToLinkedList (getNonEmpty xs)
 
@@ -144,7 +144,7 @@ qcProps = testGroup "(checked by QuickCheck)"
 
         -- return $ getNonEmpty lxs == xsAtIx
 
-  , QC.testProperty @ (NonEmptyList Int -> [Int] -> Bool) "Appending linked lists" $
+  , QC.testProperty @(NonEmptyList Int -> [Int] -> Bool) "Appending linked lists" $
     \xs ys -> runST $ do
       lxs <- listToLinkedList (getNonEmpty xs)
       lys <- listToLinkedList ys

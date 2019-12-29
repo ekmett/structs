@@ -1,3 +1,7 @@
+## next [????.??.??]
+* Achieve forward compatibility with
+  [GHC proposal 229](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0229-whitespace-bang-patterns.rst).
+
 ## 0.1.2 [2019.05.02]
 * Add a unit test suite.
 
