@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE Unsafe #-}
 -----------------------------------------------------------------------------
 -- |
@@ -17,9 +18,7 @@ module Data.Struct
   , eqStruct
   , alloc
   -- * Nil
-#ifndef HLINT
   , pattern Nil
-#endif
   , isNil
   , NullPointerException(..)
   -- * Slots and Fields
