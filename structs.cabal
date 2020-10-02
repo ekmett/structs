@@ -1,6 +1,6 @@
 name:          structs
 category:      Data
-version:       0.1.3
+version:       0.1.4
 license:       BSD3
 cabal-version: 1.22
 license-file:  LICENSE

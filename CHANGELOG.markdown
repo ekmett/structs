@@ -1,4 +1,4 @@
-## next [????.??.??]
+## 0.1.4 [2020.10.02]
 * Allow building with `template-haskell-2.17.0.0` (GHC 9.0).
 
 ## 0.1.3 [2020.01.29]
