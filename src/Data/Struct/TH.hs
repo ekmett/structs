@@ -11,6 +11,7 @@ import           Data.Struct
 import           Data.Struct.Internal (Dict(Dict), initializeUnboxedField, st)
 import           Data.List (groupBy, nub)
 import           Language.Haskell.TH
+import           Language.Haskell.TH.Datatype.TyVarBndr
 import           Language.Haskell.TH.Syntax (VarStrictType)
 
 #ifdef HLINT
@@ -20,7 +21,7 @@ import           Language.Haskell.TH.Syntax (VarStrictType)
 data StructRep = StructRep
   { srState       :: Name
   , srName        :: Name
-  , srTyVars      :: [TyVarBndr]
+  , srTyVars      :: [TyVarBndrUnit]
 #if MIN_VERSION_template_haskell(2,12,0)
   , srDerived     :: [DerivClause]
 #else
@@ -98,15 +99,15 @@ validateContructor xs = fail ("Expected 1 constructor, got " ++ show (length xs)
 
 -- A struct type's final type variable should be suitable for
 -- use as the ('PrimState' m) argument.
-validateStateType :: [TyVarBndr] -> Q Name
+validateStateType :: [TyVarBndrUnit] -> Q Name
 validateStateType xs =
   do when (null xs) (fail "state type expected but no type variables found")
-     case last xs of
-       PlainTV n -> return n
-       KindedTV n k
-         | k == starK -> return n
-         | otherwise  -> fail "state type should have kind *"
-
+     elimTV return validateKindedTV (last xs)
+  where
+    validateKindedTV :: Name -> Kind -> Q Name
+    validateKindedTV n k
+      | k == starK = return n
+      | otherwise  = fail "state type should have kind *"
 
 -- | Figure out which record fields are Slots and which are
 -- Fields. Slots will have types ending in the state type
@@ -190,13 +191,12 @@ repType1 rep = repTypeHelper (srName rep) (init (srTyVars rep))
 repType :: StructRep -> TypeQ
 repType rep = repTypeHelper (srName rep) (srTyVars rep)
 
-repTypeHelper :: Name -> [TyVarBndr] -> TypeQ
+repTypeHelper :: Name -> [TyVarBndrUnit] -> TypeQ
 repTypeHelper c vs = foldl appT (conT c) (tyVarBndrT <$> vs)
 
 -- Construct a 'TypeQ' from a 'TyVarBndr'
-tyVarBndrT :: TyVarBndr -> TypeQ
-tyVarBndrT (PlainTV  n  ) = varT n
-tyVarBndrT (KindedTV n k) = sigT (varT n) k
+tyVarBndrT :: TyVarBndrUnit -> TypeQ
+tyVarBndrT = elimTV varT (sigT . varT)
 
 generateStructInstance :: StructRep -> DecsQ
 generateStructInstance rep =
@@ -208,12 +208,14 @@ generateStructInstance rep =
 generateAlloc :: StructRep -> DecsQ
 generateAlloc rep =
   do mName <- newName "m"
-     let m = varT mName
+     let m :: TypeQ
+         m = varT mName
+
          n = length (groupBy isNeighbor (srMembers rep))
          allocName = mkAllocName rep
 
      simpleDefinition rep allocName
-       (forallT [PlainTV mName] (cxt [])
+       (forallT [plainTVSpecified mName] (cxt [])
           [t| PrimMonad $m => $m ( $(repType1 rep) (PrimState $m) ) |])
        [| alloc n |]
 
@@ -271,7 +273,9 @@ assignN this i us =
 newStructType :: StructRep -> TypeQ
 newStructType rep =
   do mName <- newName "m"
-     let m = varT mName
+     let m :: TypeQ
+         m = varT mName
+
          s = [t| PrimState $m |]
          obj = repType1 rep
 
@@ -285,7 +289,7 @@ newStructType rep =
 
          primPreds = primPred <$> nub [ t | Member UnboxedField _ (VarT t) <- srMembers rep ]
 
-     forallRepT rep $ forallT [PlainTV mName] (cxt primPreds)
+     forallRepT rep $ forallT [plainTVSpecified mName] (cxt primPreds)
        [t| PrimMonad $m => $r |]
 
 -- generates a slot, field, or unboxedField definition per member
@@ -352,7 +356,7 @@ simpleValD var val = valD (varP var) (normalB val) []
 -- Quantifies over all of the type variables in a struct data type
 -- except the state variable which is likely to be ('PrimState' s)
 forallRepT :: StructRep -> TypeQ -> TypeQ
-forallRepT rep = forallT (init (srTyVars rep)) (cxt [])
+forallRepT rep = forallT (init (changeTVFlags SpecifiedSpec (srTyVars rep))) (cxt [])
 
 (-->) :: TypeQ -> TypeQ -> TypeQ
 f --> x = arrowT `appT` f `appT` x

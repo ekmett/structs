@@ -1,3 +1,6 @@
+## next [????.??.??]
+* Allow building with `template-haskell-2.17.0.0` (GHC 9.0).
+
 ## 0.1.3 [2020.01.29]
 * Achieve forward compatibility with
   [GHC proposal 229](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0229-whitespace-bang-patterns.rst).
