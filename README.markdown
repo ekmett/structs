@@ -1,7 +1,7 @@
 structs
 ==========
 
-[![Hackage](https://img.shields.io/hackage/v/structs.svg)](https://hackage.haskell.org/package/structs) [![Build Status](https://secure.travis-ci.org/ekmett/structs.png?branch=master)](http://travis-ci.org/ekmett/structs)
+[![Hackage](https://img.shields.io/hackage/v/structs.svg)](https://hackage.haskell.org/package/structs) [![Build Status](https://github.com/ekmett/structs/workflows/Haskell-CI/badge.svg)](https://github.com/ekmett/structs/actions?query=workflow%3AHaskell-CI)
 
 This package explores strict mutable data structures in Haskell.
 
