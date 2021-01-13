@@ -22,6 +22,7 @@ import Data.Struct.Internal
 import Data.Word
 
 -- $setup
+-- >>> import Data.Struct.Internal
 -- >>> import Data.Struct.Internal.Label
 
 #ifdef HLINT
