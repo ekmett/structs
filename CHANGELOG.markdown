@@ -1,3 +1,6 @@
+## next [????.??.??]
+* Make the test suite compile on recent GHCs.
+
 ## 0.1.5 [2021.02.17]
 * The build-type has been changed from `Custom` to `Simple`.
   To achieve this, the `doctests` test suite has been removed in favor of using
