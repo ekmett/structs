@@ -36,7 +36,7 @@ library
   build-depends:
     base >= 4.9 && < 5,
     deepseq,
-    template-haskell >= 2.11 && < 2.19,
+    template-haskell >= 2.11 && < 2.20,
     th-abstraction >= 0.4 && < 0.5,
     ghc-prim,
     primitive
