@@ -121,7 +121,31 @@ data Null = Null
 -- >>> isNil o
 -- False
 isNil :: Struct t => t s -> Bool
-isNil t = isTrue# (unsafeCoerce# reallyUnsafePtrEquality# (destruct t) Null)
+isNil t = isTrue# (
+#if MIN_VERSION_base(4,17,0)
+  -- In base-4.17.0.0 or later, reallyUnsafePtrEquality# is levity polymorphic
+  -- and heterogeneous, so we can directly invoke it on @destruct t@ (of type
+  -- @SmallMutableArray# s Any :: UnliftedType@)) and @Null@ (of type
+  -- @Null :: Type@).
+  reallyUnsafePtrEquality#
+#else
+  -- In earlier versions of base, reallyUnsafePtrEquality#'s type is more
+  -- restrictive: both arguments must have the same type, and the type of the
+  -- arguments must be lifted (i.e., of kind @Type@). To make this work, we use
+  -- unsafeCoerce# to coerce both arguments to type @Any :: Type@, which allows
+  -- the application of reallyUnsafePtrEquality# to typecheck.
+  --
+  -- Note that we are coercing from SmallMutableArray#, an unlifted type, to
+  -- Any, a lifted type. This is on shaky ground, as GHC only guarantees that
+  -- coercing to Any works for lifted types. GHC seemed to tolerate coercing
+  -- from SmallMutableArray# to Any for many releases, but this stopped working
+  -- in GHC 9.6: see https://gitlab.haskell.org/ghc/ghc/-/issues/22813. Luckily,
+  -- we can avoid the issue by using a levity polymorphic version of
+  -- reallyUnsafePtrEquality# directly, without any intermediate coercions to
+  -- Any.
+  unsafeCoerce# reallyUnsafePtrEquality#
+#endif
+    (destruct t) Null)
 {-# INLINE isNil #-}
 
 #ifndef HLINT

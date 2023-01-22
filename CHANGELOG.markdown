@@ -1,3 +1,9 @@
+## next [????.??.??]
+* Avoid a particularly dodgy use of `unsafeCoerce#` in the implementation of
+  `isNil` when building with GHC 9.4 or later. This is necessary to make the
+  `isNil` function behave properly on GHC 9.6, as changes to GHC's optimizer in
+  9.6 make that use of `unsafeCoerce#` produce unexpected results at runtime.
+
 ## 0.1.6 [2021.04.30]
 * Make the test suite compile on recent GHCs.
 
