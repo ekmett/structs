@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE Unsafe #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RankNTypes #-}
@@ -11,6 +12,11 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DefaultSignatures #-}
+
+#if __GLASGOW_HASKELL__ < 806
+{-# LANGUAGE TypeInType #-}
+#endif
+
 {-# OPTIONS_HADDOCK not-home #-}
 -----------------------------------------------------------------------------
 -- |
@@ -30,6 +36,10 @@ import Control.Monad.ST
 import Data.Primitive
 import Data.Coerce
 import GHC.Exts
+
+#if MIN_VERSION_base(4,15,0)
+import Unsafe.Coerce (unsafeCoerceUnlifted)
+#endif
 
 -- $setup
 -- >>> import Control.Monad.Primitive
@@ -159,25 +169,91 @@ pattern Nil <- (isNil -> True) where
 -- * Faking SmallMutableArrayArray#s
 --------------------------------------------------------------------------------
 
+{-
+The types of writeSmallArray#, readSmallArray#, and casSmallArray# became
+levity polymorphic in @base-4.17.0.0@, which allows us to coerce from a
+@SmallMutableArray# s Any@ to a @SmallMutableArray# s (SmallMutableArray# s
+Any)@ or a @SmallMutableArray# s MutableByteArray#@. These types are all of
+kind UnliftedType, so we can accomplish this coercion using
+unsafeCoerceUnlifted instead of its dodgier alternative, unsafeCoerce#.
+
+On older versions of base, SmallMutableArray# is of kind @Type -> Type ->
+UnliftedType@, so we must resort to sketchier uses of unsafeCoerce#. For
+instance, the implementation of readMutableByteArraySmallArray# must coerce from
+this type:
+
+  SmallMutableArray# s Any -> Int# -> State# s -> (# State# s, Any #)
+
+To this type:
+
+  SmallMutableArray# s Any -> Int# -> State# s -> (# State# s, MutableByteArray# s #)
+
+This implies coercing (Any :: Type) to (MutableByteArray# s :: UnliftedType).
+This is on shaky ground, as the coercion changes a lifted type to an unlifted
+type! Unfortunately, we can't really do better given SmallMutableArray#'s
+restrictive kind.
+
+Note that both the pre- and post-@base-4.17.0.0@ versions of the code use the
+same number of unsafe coercions. The difference lies in whether you are
+coercing from @Any@ to @MutableByteArray# s@ (a kind-heterogeneous coercion)
+versus coercing from @SmallMutableArray# s Any@ to @SmallMutableArray# s
+(MutableByteArray# s)@ (a kind-homogeneous coercion). You'll still need /some/
+sort of unsafe coercion given the fact that the @structs@ library uniformly
+represents everything as @SmallMutableArray# s Any@, but at the very least, the
+latter types of coercions avoid casting directly from lifted to unlifted types.
+
+See https://gitlab.haskell.org/ghc/ghc/-/issues/22813 for the GHC issue that
+led to the current design of this code.
+-}
+
 writeSmallMutableArraySmallArray# :: SmallMutableArray# s Any -> Int# -> SmallMutableArray# s Any -> State# s -> State# s
+#if MIN_VERSION_base(4,17,0)
+writeSmallMutableArraySmallArray# m i a s = writeSmallArray# (unsafeCoerceUnlifted m) i a s
+#else
 writeSmallMutableArraySmallArray# m i a s = unsafeCoerce# writeSmallArray# m i a s
+#endif
 {-# INLINE writeSmallMutableArraySmallArray# #-}
 
 readSmallMutableArraySmallArray# :: SmallMutableArray# s Any -> Int# -> State# s -> (# State# s, SmallMutableArray# s Any #)
+#if MIN_VERSION_base(4,17,0)
+readSmallMutableArraySmallArray# m i s = readSmallArray# (unsafeCoerceUnlifted m) i s
+#else
 readSmallMutableArraySmallArray# m i s = unsafeCoerce# readSmallArray# m i s
+#endif
 {-# INLINE readSmallMutableArraySmallArray# #-}
 
 writeMutableByteArraySmallArray# :: SmallMutableArray# s Any -> Int# -> MutableByteArray# s -> State# s -> State# s
+#if MIN_VERSION_base(4,17,0)
+writeMutableByteArraySmallArray# m i a s = writeSmallArray# (unsafeCoerceUnlifted m) i a s
+#else
 writeMutableByteArraySmallArray# m i a s = unsafeCoerce# writeSmallArray# m i a s
+#endif
 {-# INLINE writeMutableByteArraySmallArray# #-}
 
 readMutableByteArraySmallArray# :: SmallMutableArray# s Any -> Int# -> State# s -> (# State# s, MutableByteArray# s #)
+#if MIN_VERSION_base(4,17,0)
+readMutableByteArraySmallArray# m i s = readSmallArray# (unsafeCoerceUnlifted m) i s
+#else
 readMutableByteArraySmallArray# m i s = unsafeCoerce# readSmallArray# m i s
+#endif
 {-# INLINE readMutableByteArraySmallArray# #-}
 
 casSmallMutableArraySmallArray# :: SmallMutableArray# s Any -> Int# -> SmallMutableArray# s Any -> SmallMutableArray# s Any -> State# s -> (# State# s, Int#, SmallMutableArray# s Any #)
+#if MIN_VERSION_base(4,17,0)
+casSmallMutableArraySmallArray# m i o n s = casSmallArray# (unsafeCoerceUnlifted m) i o n s
+#else
 casSmallMutableArraySmallArray# m i o n s = unsafeCoerce# casSmallArray# m i o n s
+#endif
 {-# INLINE casSmallMutableArraySmallArray# #-}
+
+#if !(MIN_VERSION_base(4,15,0))
+unsafeCoerceUnlifted :: forall (a :: TYPE UnliftedRep) (b :: TYPE UnliftedRep). a -> b
+unsafeCoerceUnlifted = unsafeCoerce#
+#endif
+
+#if !(MIN_VERSION_base(4,10,0))
+type UnliftedRep = PtrRepUnlifted
+#endif
 
 --------------------------------------------------------------------------------
 -- * Field Accessors
@@ -235,8 +311,8 @@ instance Precomposable Field where
 -- | Store the reference to the Haskell data type in a normal field
 field :: Int {- ^ slot -} -> Field s a
 field (I# i) = Field
-  (\m s -> unsafeCoerce# readSmallArray# m i s)
-  (\m a s -> unsafeCoerce# writeSmallArray# m i a s)
+  (\m s -> readSmallArray# (unsafeCoerceUnlifted m) i s)
+  (\m a s -> writeSmallArray# (unsafeCoerceUnlifted m) i a s)
 {-# INLINE field #-}
 
 -- | Store the reference in the nth slot in the nth argument, treated as a MutableByteArray

@@ -53,6 +53,7 @@ library
     Data.Struct.Order
 
   ghc-options: -Wall -fwarn-monomorphism-restriction -fwarn-identities -fwarn-incomplete-record-updates -fwarn-incomplete-uni-patterns -fno-warn-wrong-do-bind
+               -Wno-unticked-promoted-constructors
   hs-source-dirs: src
   default-language: Haskell2010
 
