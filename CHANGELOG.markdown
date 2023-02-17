@@ -1,3 +1,9 @@
+## next [????.??.??]
+* Avoid some dodgy uses of `unsafeCoerce#` from `Any` (a lifted type) to
+  `MutableByteArray# s` (an unlifted type) in the internals of the library.
+  While these uses of `unsafeCoerce#` have not been observed to cause any
+  improper behavior at runtime, the previous situation was rather delicate.
+
 ## 0.1.7 [2023.01.22]
 * Avoid a particularly dodgy use of `unsafeCoerce#` in the implementation of
   `isNil` when building with GHC 9.4 or later. This is necessary to make the
