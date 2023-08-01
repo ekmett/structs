@@ -6,6 +6,8 @@ module Data.Struct.TH (makeStruct) where
 import           Control.Monad (when, zipWithM)
 import           Control.Monad.Primitive (PrimMonad, PrimState)
 import           Data.Either (partitionEithers)
+import qualified Data.List.NonEmpty as NE
+import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Primitive
 import           Data.Struct
 import           Data.Struct.Internal (Dict(Dict), initializeUnboxedField, st)
@@ -225,7 +227,7 @@ generateAlloc rep =
 generateNew :: StructRep -> DecsQ
 generateNew rep =
   do this <- newName "this"
-     let ms = groupBy isNeighbor (srMembers rep)
+     let ms = NE.groupBy isNeighbor (srMembers rep)
 
          addName m = do n <- newName (nameBase (memberName m))
                         return (n,m)
@@ -245,26 +247,26 @@ generateNew rep =
 
      sequence
        [ sigD name (newStructType rep)
-       , funD name [ clause (varP . fst <$> concat msWithArgs)
+       , funD name [ clause (varP . fst <$> concatMap NE.toList msWithArgs)
                             (normalB [| st $body |] ) [] ]
        ]
 
 
-assignN :: ExpQ -> Int -> [(Name,Member)] -> ExpQ
+assignN :: ExpQ -> Int -> NonEmpty (Name,Member) -> ExpQ
 
-assignN this _ [(arg,Member BoxedField n _)] =
+assignN this _ ((arg,Member BoxedField n _) :| []) =
   [| setField $(varE n) $this $(varE arg) |]
 
-assignN this _ [(arg,Member Slot n _)] =
+assignN this _ ((arg,Member Slot n _) :| []) =
   [| set      $(varE n) $this $(varE arg)|]
 
 assignN this i us =
-  do let n = length us
+  do let n = NE.length us
      mba <- newName "mba"
-     let arg0 = fst (head us)
+     let arg0 = fst (NE.head us)
      doE $ bindS (varP mba) [| initializeUnboxedField i n (sizeOf $(varE arg0)) $this |]
          : [ noBindS [| writeByteArray $(varE mba) j $(varE arg) |]
-           | (j,(arg,_)) <- zip [0 :: Int ..] us ]
+           | (j,(arg,_)) <- zip [0 :: Int ..] (NE.toList us) ]
 
 -- | The type of the struct initializer is complicated enough to
 -- pull it out here.
