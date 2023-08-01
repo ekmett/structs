@@ -1,3 +1,6 @@
+## next [????.??.??]
+* Support building with `template-haskell-2.21.*` (GHC 9.8).
+
 ## 0.1.8 [2023.02.22]
 * Avoid some dodgy uses of `unsafeCoerce#` from `Any` (a lifted type) to
   `MutableByteArray# s` (an unlifted type) in the internals of the library.

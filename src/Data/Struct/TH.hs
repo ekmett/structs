@@ -21,7 +21,7 @@ import           Language.Haskell.TH.Syntax (VarStrictType)
 data StructRep = StructRep
   { srState       :: Name
   , srName        :: Name
-  , srTyVars      :: [TyVarBndrUnit]
+  , srTyVars      :: [TyVarBndrVis]
 #if MIN_VERSION_template_haskell(2,12,0)
   , srDerived     :: [DerivClause]
 #else
@@ -99,7 +99,7 @@ validateContructor xs = fail ("Expected 1 constructor, got " ++ show (length xs)
 
 -- A struct type's final type variable should be suitable for
 -- use as the ('PrimState' m) argument.
-validateStateType :: [TyVarBndrUnit] -> Q Name
+validateStateType :: [TyVarBndrVis] -> Q Name
 validateStateType xs =
   do when (null xs) (fail "state type expected but no type variables found")
      elimTV return validateKindedTV (last xs)
@@ -191,11 +191,11 @@ repType1 rep = repTypeHelper (srName rep) (init (srTyVars rep))
 repType :: StructRep -> TypeQ
 repType rep = repTypeHelper (srName rep) (srTyVars rep)
 
-repTypeHelper :: Name -> [TyVarBndrUnit] -> TypeQ
+repTypeHelper :: Name -> [TyVarBndrVis] -> TypeQ
 repTypeHelper c vs = foldl appT (conT c) (tyVarBndrT <$> vs)
 
 -- Construct a 'TypeQ' from a 'TyVarBndr'
-tyVarBndrT :: TyVarBndrUnit -> TypeQ
+tyVarBndrT :: TyVarBndrVis -> TypeQ
 tyVarBndrT = elimTV varT (sigT . varT)
 
 generateStructInstance :: StructRep -> DecsQ
@@ -370,6 +370,10 @@ occurs n (VarT m) = n == m
 occurs n (ForallT _ _ t) = occurs n t -- all names are fresh in quoted code, see below
 occurs n (SigT t _) = occurs n t
 occurs _ _ = False
+
+#if !MIN_VERSION_template_haskell(2,21,0) && !MIN_VERSION_th_abstraction(0,6,0)
+type TyVarBndrVis = TyVarBndrUnit
+#endif
 
 -- Prelude Language.Haskell.TH> runQ (stringE . show =<< [t| forall a. a -> (forall a. a) |])
 -- LitE (StringL "ForallT [PlainTV a_0] [] (AppT (AppT ArrowT (VarT a_0)) (ForallT [PlainTV a_1] [] (VarT a_1)))")
