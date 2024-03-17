@@ -41,7 +41,7 @@ library
     template-haskell >= 2.11 && < 2.22,
     -- TODO: Eventually, we should bump the lower version bounds to >=0.6 so that
     -- we can remove some CPP in Data.Struct.TH.
-    th-abstraction >= 0.4 && < 0.7,
+    th-abstraction >= 0.4 && < 0.8,
     ghc-prim,
     primitive
 
