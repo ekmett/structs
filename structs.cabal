@@ -23,6 +23,7 @@ tested-with:   GHC == 8.0.2
              , GHC == 9.6.6
              , GHC == 9.8.4
              , GHC == 9.10.1
+             , GHC == 9.12.1
 synopsis:      Strict GC'd imperative object-oriented programming with cheap pointers.
 description:
   This project is an experiment with a small GC'd strict mutable imperative universe with cheap pointers inside of the GHC runtime system.
@@ -40,7 +41,7 @@ library
   build-depends:
     base >= 4.9 && < 5,
     deepseq,
-    template-haskell >= 2.11 && < 2.23,
+    template-haskell >= 2.11 && < 2.24,
     -- TODO: Eventually, we should bump the lower version bounds to >=0.6 so that
     -- we can remove some CPP in Data.Struct.TH.
     th-abstraction >= 0.4 && < 0.8,
