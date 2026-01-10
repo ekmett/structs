@@ -1,3 +1,6 @@
+## [????.??.??]
+* Remove unused `deepseq` and `ghc-prim` dependencies.
+
 ## 0.1.9 [2023.08.06]
 * Support building with `template-haskell-2.21.*` (GHC 9.8).
 
