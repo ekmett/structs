@@ -1,4 +1,4 @@
-## [????.??.??]
+## 0.1.10 [2026.01.10]
 * Allow building with `template-haskell-2.24.*` (GHC 9.14).
 * Remove unused `deepseq` and `ghc-prim` dependencies.
 
